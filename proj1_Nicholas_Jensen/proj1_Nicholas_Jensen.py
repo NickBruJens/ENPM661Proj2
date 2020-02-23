@@ -1,8 +1,8 @@
 import time
 import numpy as np
 
-start_time = time.time()
 initial_state = tuple(input('input board state in the form (1,2,3),(4,5,6),(7,8,0) : '))
+start_time = time.time()
 goal_state = ((1,2,3),(4,5,6),(7,8,0))
 moves_state = {"0": initial_state}  # dictionary that pairs possible moves to game states
 
