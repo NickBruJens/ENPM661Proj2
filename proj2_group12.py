@@ -15,14 +15,15 @@ class MapMake:
         self.clearance = 0
         self.width_x = width_x
         self.length_y = length_y
-        self.map = np.zeros([width_x, length_y, 2])
-        self.map[:,:, 1] = np.inf
+        self.map = np.zeros([width_x, length_y, 4])
+        self.map[:,:,0:3] = [0,255,0]
+        self.map[:,:, 3] = np.inf
 
     def circle_obstacle(self, xpos, ypos, radius):  # makes a circle obstacle
         for i in range(self.width_x):
             for j in range(self.length_y):
                 if np.sqrt(np.square(ypos - j) + np.square(xpos - i)) <= radius:
-                    self.map[i, j, 0] = 1
+                    self.map[i, j, 0:3] = [0, 0, 255]
 
     def oval_obstacle(self, xpos, ypos, radius_x, radius_y):  # makes oval obstacle
         for i in range(self.width_x):
@@ -30,7 +31,7 @@ class MapMake:
                 first_oval_term = np.square(i - xpos) / np.square(radius_x)
                 second_oval_term = np.square(j - ypos) / np.square(radius_y)
                 if first_oval_term + second_oval_term <= 1:
-                    self.map[i, j, 0] = 1
+                    self.map[i, j, 0:3] = [0, 0, 255]
 
     def triangle_obstacle(self, point1, point2, point3):  # makes triangle obstacle
         tri_area = area(point1[0], point1[1], point2[0], point2[1], point3[0], point3[1])
@@ -41,7 +42,7 @@ class MapMake:
                 a2 = area(point1[0], point1[1], i, j, point3[0], point3[1])
                 a3 = area(point1[0], point1[1], point2[0], point2[1], i, j)
                 if np.abs(a1 + a2 + a3 - tri_area) <= .001:
-                    self.map[i, j, 0] = 1
+                    self.map[i, j, 0:3] = [0, 0, 255]
 
 
 a = MapMake(300, 200)
@@ -66,5 +67,5 @@ a.triangle_obstacle(point3,point1,point2)  # lower left rectangle
 a.triangle_obstacle(point4,point3,point1)
 
 
-cv2.imshow('map', np.rot90(a.map[:, :, 0]))
+cv2.imshow('map', np.rot90(a.map[:, :, 0:3]))
 cv2.waitKey()
