@@ -67,8 +67,12 @@ def define_map():
     a.triangle_obstacle(point3,point1,point2)  # lower left rectangle
     a.triangle_obstacle(point4,point3,point1)
 
-if __name__=="__main__":
-    define_map()
+def visualise_map():
     resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
     cv2.imshow('map', resized)
-    cv2.waitKey()
+    cv2.waitKey()    
+
+if __name__=="__main__":
+    define_map()
+    visualise_map()
+    
