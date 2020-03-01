@@ -44,28 +44,31 @@ class MapMake:
                 if np.abs(a1 + a2 + a3 - tri_area) <= .001:
                     self.map[i, j, 0:3] = [0, 0, 255]
 
+def define_map():
+    global a
+    a = MapMake(300, 200)
 
-a = MapMake(300, 200)
+    a.circle_obstacle(225, 150, 25)  # upper right circle
+    a.oval_obstacle(150,100,40,20)  # center oval
 
-a.circle_obstacle(225, 150, 25)  # upper right circle
-a.oval_obstacle(150,100,40,20)  # center oval
+    a.triangle_obstacle([20,120],[25,185],[50,150])  # upper left polygon
+    a.triangle_obstacle([25,185],[50,150],[75,185])
+    a.triangle_obstacle([75,185],[100,150],[50,150])
+    a.triangle_obstacle([50,150],[100,150],[75,120])
 
-a.triangle_obstacle([20,120],[25,185],[50,150])  # upper left polygon
-a.triangle_obstacle([25,185],[50,150],[75,185])
-a.triangle_obstacle([75,185],[100,150],[50,150])
-a.triangle_obstacle([50,150],[100,150],[75,120])
+    a.triangle_obstacle([225,10],[225,40],[250,25])  # lower right diamond
+    a.triangle_obstacle([225,10],[225,40],[200,25])
 
-a.triangle_obstacle([225,10],[225,40],[250,25])  # lower right diamond
-a.triangle_obstacle([225,10],[225,40],[200,25])
+    point1 = [95,30]
+    point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
+    point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
+    point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
 
-point1 = [95,30]
-point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
-point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
-point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
+    a.triangle_obstacle(point3,point1,point2)  # lower left rectangle
+    a.triangle_obstacle(point4,point3,point1)
 
-a.triangle_obstacle(point3,point1,point2)  # lower left rectangle
-a.triangle_obstacle(point4,point3,point1)
-
-
-cv2.imshow('map', np.rot90(a.map[:, :, 0:3]))
-cv2.waitKey()
+if __name__=="__main__":
+    define_map()
+    resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
+    cv2.imshow('map', resized)
+    cv2.waitKey()
