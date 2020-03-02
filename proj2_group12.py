@@ -12,7 +12,7 @@ class MapMake:
 
     def __init__(self, width_x, length_y):
 
-        self.clearance = 0
+
         self.width_x = width_x
         self.length_y = length_y
         self.map = np.zeros([width_x, length_y, 4])
@@ -44,6 +44,40 @@ class MapMake:
                 if np.abs(a1 + a2 + a3 - tri_area) <= .001:
                     self.map[i, j, 0:3] = [0, 0, 255]
 
+
+    def clearance(self,clearance_distance):
+        obstacles = np.where(self.map[:,:,2] == 255)
+        obstacles = np.array(obstacles)
+        obstacles = obstacles.T
+        obstacle_edges = []
+        obstacle_list = obstacles.tolist()
+
+        for i in range(len(obstacles)):
+            up = [obstacles[i][0],obstacles[i][1]+1]
+            down = [obstacles[i][0],obstacles[i][1]-1]
+            left = [obstacles[i][0]-1,obstacles[i][1]]
+            right = [obstacles[i][0]+1,obstacles[i][1]]
+
+            surrounded = (up in obstacle_list) and\
+                         (down in obstacle_list) and\
+                         (left in obstacle_list) and\
+                         (right in obstacle_list)
+
+            if not surrounded:
+                obstacle_edges.append(obstacles[i])       # only compares pixel indices to edge of obstacle
+
+        freex = np.where(self.map[:,:,2] == 0)[0]        # this takes a very long time to run, but has the
+        freey = np.where(self.map[:,:,2] == 0)[1]        # advantage of working with any shape
+        for i in range(len(freex)):
+            if i%20 == 0:
+                print(i/len(freex))
+            for j in range(len(obstacle_edges)):
+                if np.sqrt(np.square(freex[i]-obstacle_edges[j][0])+np.square(freey[i]-obstacle_edges[j][1])) \
+                        <= clearance_distance:
+                    self.map[freex[i], freey[i], 0:3] = [0, 30, 100]
+
+
+
 def define_map():
     global a
     a = MapMake(300, 200)
@@ -66,6 +100,7 @@ def define_map():
 
     a.triangle_obstacle(point3,point1,point2)  # lower left rectangle
     a.triangle_obstacle(point4,point3,point1)
+    #a.clearance(10) takes a very long time to run as it compares obstacle edges to every pixel
 
 def visualise_map():
     resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
