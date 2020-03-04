@@ -16,22 +16,27 @@ def area(x1, y1, x2, y2, x3, y3):  # area of triangle from points
     return abs((x1 * (y2 - y3) + x2 * (y3 - y1)
                 + x3 * (y1 - y2)) / 2.0)
 
+# self.map is shape [NxMx2]
+# self.map[:,:,0:1] = [type of cell, cost to come]
+# cell type 0 = free space
+# cell type 1 = obstacle
+# cell type 2 = clearance space
+# cell type 3 = goal
+# cell type 4 = start position if needed
+
 class MapMake:
 
     def __init__(self, width_x, length_y):
-
-        self.clearance = 0
         self.width_x = width_x
         self.length_y = length_y
         self.map = np.zeros([width_x, length_y, 4]) # declaration
-        self.map[:,:,0:3] = [0,255,0]               # stores the rgb values for visualisation
-        self.map[:,:, 3] = np.inf                   # last element stores the cost to come
+        self.map[:,:, 1] = np.inf                   # last element stores the cost to come
 
     def circle_obstacle(self, xpos, ypos, radius):  # makes a circle obstacle
         for i in range(self.width_x):
             for j in range(self.length_y):
                 if np.sqrt(np.square(ypos - j) + np.square(xpos - i)) <= radius:
-                    self.map[i, j, 0:3] = [0, 0, 255]
+                    self.map[i, j, 0] = 1
 
     def oval_obstacle(self, xpos, ypos, radius_x, radius_y):  # makes oval obstacle
         for i in range(self.width_x):
@@ -39,7 +44,7 @@ class MapMake:
                 first_oval_term = np.square(i - xpos) / np.square(radius_x)
                 second_oval_term = np.square(j - ypos) / np.square(radius_y)
                 if first_oval_term + second_oval_term <= 1:
-                    self.map[i, j, 0:3] = [0, 0, 255]
+                    self.map[i, j, 0] = 1
 
     def triangle_obstacle(self, point1, point2, point3):  # makes triangle obstacle
         tri_area = area(point1[0], point1[1], point2[0], point2[1], point3[0], point3[1])
@@ -50,7 +55,37 @@ class MapMake:
                 a2 = area(point1[0], point1[1], i, j, point3[0], point3[1])
                 a3 = area(point1[0], point1[1], point2[0], point2[1], i, j)
                 if np.abs(a1 + a2 + a3 - tri_area) <= .001:
-                    self.map[i, j, 0:3] = [0, 0, 255]
+                    self.map[i, j, 0] = 1
+
+    def clearance(self, clearance_distance):
+        obstacles = np.where(self.map[:, :, 0] == 1)
+        obstacles = np.array(obstacles)
+        obstacles = obstacles.T
+        obstacle_edges = []
+        obstacle_list = obstacles.tolist()
+
+        for i in range(len(obstacles)):
+            up = [obstacles[i][0], obstacles[i][1] + 1]
+            down = [obstacles[i][0], obstacles[i][1] - 1]
+            left = [obstacles[i][0] - 1, obstacles[i][1]]
+            right = [obstacles[i][0] + 1, obstacles[i][1]]
+
+            surrounded = (up in obstacle_list) and \
+                         (down in obstacle_list) and \
+                         (left in obstacle_list) and \
+                         (right in obstacle_list)
+
+            if not surrounded:
+                obstacle_edges.append(obstacles[i])  # only compares pixel indices to edge of obstacle
+
+        for i in range(len(obstacle_edges)):
+            xmin,xmax = obstacle_edges[i][0]-clearance_distance, obstacle_edges[i][0]+clearance_distance
+            ymin,ymax = obstacle_edges[i][1]-clearance_distance, obstacle_edges[i][1]+clearance_distance
+            for j in np.arange(xmin,xmax,1):
+                for k in np.arange(ymin,ymax,1):
+                    dist = np.sqrt(np.square(int(j)-obstacle_edges[i][0])+np.square(int(k)-obstacle_edges[i][1]))
+                    if dist <= clearance_distance and self.map[int(j),int(k),0] != 1:
+                        self.map[int(j),int(k),0] = 2
 
 def define_map():
     global a
@@ -58,6 +93,7 @@ def define_map():
 
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
+
 
     a.triangle_obstacle([20,120],[25,185],[50,150])  # upper left polygon
     a.triangle_obstacle([25,185],[50,150],[75,185])
@@ -74,14 +110,39 @@ def define_map():
 
     a.triangle_obstacle(point3,point1,point2)  # lower left rectangle
     a.triangle_obstacle(point4,point3,point1)
+    a.clearance(10)
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
+
+    #free_space = [0,255,0] # what the values where before
+    #obstacle = [0,0,255]
+    #clearance = [0,30,100]
     resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
     cv2.imshow('map', resized)
-    cv2.waitKey()    
+    cv2.waitKey()
 
-def is_obstacle(): # A function to check if the a given point is inside the obstacle space.
-    pass
+def point_in_obstacle(point): # checks if the point is in obstacle or clearance space:
+    if a.map[point[0],point[1],0] == 1 or a.map[point[0],point[1],0] == 2:
+        return True
+
+def allowable_moves(point): # makes sure child states are new, not on obstacles, and are on the map
+    up,down,right,left = (point[0],point[1]+1),(point[0],point[1]-1),(point[0]+1,point[1]),(point[0]-1,point[1])
+    nw,ne,sw,se = (point[0]-1,point[1]+1),\
+                  (point[0]+1,point[1]+1),\
+                  (point[0]-1,point[1]-1),\
+                  (point[0]+1,point[1]-1)
+    moves = list((up,down,right,left,nw,ne,sw,se))
+    for move in moves:
+        if point_in_obstacle(move):
+            moves.remove(move)  # this is in an obstacle
+        elif a.map[move[0],move[1], 1] != np.inf:
+            moves.remove(move)  # this state was already explored
+        elif move[0] >= a.map.shape[0] or move[0] < 0: # went off map x
+            moves.remove(move)
+        elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
+            moves.remove(move)
+    return moves # returns new points that
+
 
 def visualize_path(): # A function to visualise the entire search path and the optimal path finally.
     pass
@@ -111,17 +172,25 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
     solver(heapq.heappop(l))            # recursive call to solver where we pass the element with the least cost 
     return 0        
 
-if __name__=="__main__":
-    define_map()
-    # visualize_map()
-    start_pt = (input("Enter start point: "))
-    start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
-    global end_pt
-    end_pt = (input("Enter end point: "))
-    end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
 
-    if(is_obstacle(start_pt) or is_obstacle(end_pt)): # check if either of start or end node an obstacle 
-        print("Enter valid points... ")
+
+if __name__=="__main__":
+    global start_pt
+    global end_pt
+    define_map()
+    #visualize_map()
+    valid_points = False
+    while  valid_points == False:
+        start_pt = (input("Enter start point in form # #: "))
+        start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
+
+        end_pt = (input("Enter end point in form # #: "))
+        end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
+        if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
+            print("Enter valid points... ")
+        else:
+            valid_points = True
+
 
     # create start node belonging to class node
     start_node = node(start_pt,None)
@@ -144,7 +213,6 @@ if __name__=="__main__":
 
 
 ################# List of functions/class/methods to be implemented #######################
-# Function is_obstacle
 # Class node
 # Function solver
 # Function visualise_path()
@@ -153,4 +221,4 @@ if __name__=="__main__":
 # find_children
 # add_image_frame
     
-    
+
