@@ -166,10 +166,10 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
         find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
         return 1
     add_image_frame(curr_node) 
-    children = find_children(curr_node) # a function to find possible children and update cost
-    l.append(children)                  # adding possible children to the list
+    children_tuple = find_children(curr_node) # a function to find possible children and update cost
+    l.append(children_tuple)                  # adding possible children to the list
     heapq.heapify(l)                    # converting to a list 
-    solver(heapq.heappop(l))            # recursive call to solver where we pass the element with the least cost 
+    solver(heapq.heappop(l)[0])            # recursive call to solver where we pass the element with the least cost 
     return 0        
 
 
@@ -195,13 +195,13 @@ if __name__=="__main__":
     # create start node belonging to class node
     start_node = node(start_pt,None)
     global l
-    l = [(start_node.value, start_node.loc)]
+    l = [(start_node.value, start_node)]
 
     # define a priority queue and add first element
     heapq.heapify(l)
 
     # solve using djikstra
-    flag = solver(heapq.heappop(l))
+    flag = solver(heapq.heappop(l)[0])
 
     # if found, visualise the path 
     if flag == 1:
