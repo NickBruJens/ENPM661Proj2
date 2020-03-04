@@ -10,6 +10,7 @@ class node:
     def __init__(self, location, parent):
         self.loc = location
         self.value = a.map[location[0],location[1],3]
+        self.parent = parent
 
 
 def area(x1, y1, x2, y2, x3, y3):  # area of triangle from points
@@ -145,19 +146,24 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
 
 
 def visualize_path(): # A function to visualise the entire search path and the optimal path finally.
+    #vishnuu
     pass
 
 def is_goal(curr_node): # A function to check if current state is the goal point
+    #nick
     pass
 
 def find_path(curr_node): # A function to find the path uptil the root by tracking each node's parent
+    #vishnuu 
     pass
 
 def find_children(curr_node): # A function to find a node's possible children and update cost in the map for each child
-    return children
+    #nick
+    return children_tuple     # TODO 
     pass
 
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
+    #vishnuu
     pass
 
 def solver(curr_node): # A function to be recursively called to find the djikstra solution
@@ -169,7 +175,7 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
     children_tuple = find_children(curr_node) # a function to find possible children and update cost
     l.append(children_tuple)                  # adding possible children to the list
     heapq.heapify(l)                    # converting to a list 
-    solver(heapq.heappop(l)[0])            # recursive call to solver where we pass the element with the least cost 
+    solver(heapq.heappop(l)[1])            # recursive call to solver where we pass the element with the least cost 
     return 0        
 
 
@@ -201,7 +207,7 @@ if __name__=="__main__":
     heapq.heapify(l)
 
     # solve using djikstra
-    flag = solver(heapq.heappop(l)[0])
+    flag = solver(heapq.heappop(l)[1])
 
     # if found, visualise the path 
     if flag == 1:
