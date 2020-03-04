@@ -2,14 +2,14 @@ import sys
 import cv2
 import numpy as np
 import heapq
-global l
+global l, final_path, img, vidWriter
 
 
 class node:
     global a
     def __init__(self, location, parent):
         self.loc = location
-        self.value = a.map[location[0],location[1],3]
+        self.value = a.map[location[0],location[1],1]
         self.parent = parent
 
 
@@ -38,6 +38,7 @@ class MapMake:
             for j in range(self.length_y):
                 if np.sqrt(np.square(ypos - j) + np.square(xpos - i)) <= radius:
                     self.map[i, j, 0] = 1
+                    img[i,j,0:3] = [0,0,255]
 
     def oval_obstacle(self, xpos, ypos, radius_x, radius_y):  # makes oval obstacle
         for i in range(self.width_x):
@@ -46,6 +47,7 @@ class MapMake:
                 second_oval_term = np.square(j - ypos) / np.square(radius_y)
                 if first_oval_term + second_oval_term <= 1:
                     self.map[i, j, 0] = 1
+                    img[i,j,0:3] = [0,0,255]
 
     def triangle_obstacle(self, point1, point2, point3):  # makes triangle obstacle
         tri_area = area(point1[0], point1[1], point2[0], point2[1], point3[0], point3[1])
@@ -57,6 +59,7 @@ class MapMake:
                 a3 = area(point1[0], point1[1], point2[0], point2[1], i, j)
                 if np.abs(a1 + a2 + a3 - tri_area) <= .001:
                     self.map[i, j, 0] = 1
+                    img[i,j,0:3] = [0,0,255]
 
     def clearance(self, clearance_distance):
         obstacles = np.where(self.map[:, :, 0] == 1)
@@ -87,6 +90,7 @@ class MapMake:
                     dist = np.sqrt(np.square(int(j)-obstacle_edges[i][0])+np.square(int(k)-obstacle_edges[i][1]))
                     if dist <= clearance_distance and self.map[int(j),int(k),0] != 1:
                         self.map[int(j),int(k),0] = 2
+                        img[int(j),int(k),0:3] = [0,0,200]
 
 def define_map():
     global a
@@ -114,12 +118,12 @@ def define_map():
     a.clearance(10)
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
-
+    global img
     #free_space = [0,255,0] # what the values where before
     #obstacle = [0,0,255]
     #clearance = [0,30,100]
-    resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
-    cv2.imshow('map', resized)
+    # resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
+    cv2.imshow('map',img)
     cv2.waitKey()
 
 def point_in_obstacle(point): # checks if the point is in obstacle or clearance space:
@@ -144,27 +148,31 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
             moves.remove(move)
     return moves # returns new points that
 
-
-def visualize_path(): # A function to visualise the entire search path and the optimal path finally.
-    #vishnuu
-    pass
-
 def is_goal(curr_node): # A function to check if current state is the goal point
     #nick
     pass
 
 def find_path(curr_node): # A function to find the path uptil the root by tracking each node's parent
-    #vishnuu 
-    pass
+    #vishnuu
+    global final_path
+    while(curr_node!=None):
+        final_path.insert(0, curr_node)
+        curr_node = curr_node.parent
+    vidWriter.release()     
+    return
 
 def find_children(curr_node): # A function to find a node's possible children and update cost in the map for each child
     #nick
     return children_list     # [(child1.val, child1), (child2.val, child2), (child3.val, child3)]
-    pass
+    
 
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
     #vishnuu
-    pass
+    global img, vidWriter
+    img[curr_node.loc,0:3] = [0,255,(curr_node.value)/2]
+    vidWriter(img)
+    return
+    
 
 def solver(curr_node): # A function to be recursively called to find the djikstra solution
     global l
@@ -183,8 +191,14 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
 if __name__=="__main__":
     global start_pt
     global end_pt
+    global vidWriter
+    global path
+    path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
+    vidWriter = cv2.VideoWriter(path+"Djikstra", cv2.VideoWriter_fourcc(*'mp4v'), 24, (1920,1080))
+    img = np.zeros([300,200,3], dtype=np.uint8)
+    img[:,:,0:3] = [0,255,0]
     define_map()
-    #visualize_map()
+    visualize_map()
     valid_points = False
     while  valid_points == False:
         start_pt = (input("Enter start point in form # #: "))
@@ -211,7 +225,7 @@ if __name__=="__main__":
 
     # if found, visualise the path 
     if flag == 1:
-        visualize_path()
+        print("Path found. Please watch the video generated.")
     # else print path not found    
     else:
         print("Solution not found... ")
