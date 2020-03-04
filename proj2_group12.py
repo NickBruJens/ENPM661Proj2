@@ -159,7 +159,7 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
 
 def find_children(curr_node): # A function to find a node's possible children and update cost in the map for each child
     #nick
-    return children_tuple     # TODO 
+    return children_list     # [(child1.val, child1), (child2.val, child2), (child3.val, child3)]
     pass
 
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
@@ -172,8 +172,8 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
         find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
         return 1
     add_image_frame(curr_node) 
-    children_tuple = find_children(curr_node) # a function to find possible children and update cost
-    l.append(children_tuple)                  # adding possible children to the list
+    children_list = find_children(curr_node) # a function to find possible children and update cost
+    l = l + children_list                  # adding possible children to the list
     heapq.heapify(l)                    # converting to a list 
     solver(heapq.heappop(l)[1])            # recursive call to solver where we pass the element with the least cost 
     return 0        
