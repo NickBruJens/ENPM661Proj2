@@ -16,11 +16,6 @@ class node:
         self.counter = node_cnt
         node_cnt += 1
 
-
-def area(x1, y1, x2, y2, x3, y3):  # area of triangle from points
-    return abs((x1 * (y2 - y3) + x2 * (y3 - y1)
-                + x3 * (y1 - y2)) / 2.0)
-
 def sign(point1,point2,point3):
     return (point1[0]-point3[0])*(point2[1]-point3[1])-(point2[0]-point3[0])*(point1[1]-point3[1])
 
@@ -118,9 +113,6 @@ class MapMake:
 def define_map():
     global a
     a = MapMake(300, 200)
-    print('this is the first map shape--')
-    print(a.map.shape)
-
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
 
@@ -146,7 +138,7 @@ def define_map():
 
     a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
     a.triangle_obstacle((point4,point3,point1))
-    #a.clearance(2)
+    a.clearance(10)
 
 
 
@@ -177,7 +169,6 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
     test_square_moves = list((up,down,right,left))
     allowable_square_moves = []
 
-    print('this is the point--')
     for move in test_square_moves:
         if a.map[move[0],move[1],0] == 0 : # if not in obstacle
             if move[0] < a.map.shape[0] and move[0] >= 0: # within x
@@ -195,12 +186,6 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
                     allowable_dia_moves.append(move)
 
     return allowable_square_moves,allowable_dia_moves
-
-
-
-
-
-    # return moves # returns new points that
 
 def is_goal(curr_node): # A function to check if current state is the goal point
     if curr_node.loc[0] == end_pt[0] and curr_node.loc[1] == end_pt[1]:
@@ -224,7 +209,6 @@ def find_children(curr_node): # A function to find a node's possible children an
         if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:
             a.map[state_loc[0]][state_loc[1]][1] = sqr_child_cost
             sqr_child_node = node(state_loc,curr_node)
-            print (state_loc)
             sqr_children_list.append((sqr_child_node.value, sqr_child_node.counter, sqr_child_node))
 
     dia_child_loc = allowable_moves(curr_node.loc)[1]
@@ -234,20 +218,18 @@ def find_children(curr_node): # A function to find a node's possible children an
         if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:
             a.map[state_loc[0]][state_loc[1]][1] = dia_child_cost
             dia_child_node = node(state_loc, curr_node)
-            print (state_loc)
             dia_children_list.append((dia_child_node.value, dia_child_node.counter, dia_child_node))
 
     childern_list = sqr_children_list + dia_children_list
     return childern_list
 
-    #return children_list     # [(child1.val, child1), (child2.val, child2), (child3.val, child3)]
+
     
 
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
     #vishnuu
     global img, vidWriter
     if curr_node.value != np.inf :
-        # print(curr_node.loc)
         img[curr_node.loc[0]][curr_node.loc[1]][0:3] = [255,0,0]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
@@ -255,7 +237,6 @@ def add_image_frame(curr_node): # A function to add the newly explored state to 
 
 def solver(curr_node):  # A function to be recursively called to find the djikstra solution
     global l
-    # print (1)
     if (is_goal(curr_node)):
         find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
         print("here")
@@ -263,15 +244,9 @@ def solver(curr_node):  # A function to be recursively called to find the djikst
     add_image_frame(curr_node)
     children_list = find_children(curr_node) # a function to find possible children and update cost
     l = l + children_list                  # adding possible children to the list
-    # print (l)
     heapq.heapify(l)                    # converting to a list
     solver(heapq.heappop(l)[2])            # recursive call to solver where we pass the element with the least cost 
     return 1        
-
-# ''' finding boundries to compare pixles to 
-# f = max_and_min(list(([1,2],[4,100],[3,10],[0,0])))
-# print(f)
-# '''
 
 
 if __name__=="__main__":
@@ -290,8 +265,6 @@ if __name__=="__main__":
     img[:,:,0:3] = [0,255,0]
     define_map()
     visualize_map()
-    print('this is the map shape for the inital test')
-    print(a.map.shape)
 
     valid_points = False
     while  valid_points == False:
