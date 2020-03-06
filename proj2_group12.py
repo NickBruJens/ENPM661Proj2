@@ -134,7 +134,7 @@ class MapMake:
 
 def define_map():
     global a
-    a = MapMake(300, 200)
+    a = MapMake(200, 300)
 
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
