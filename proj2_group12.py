@@ -2,15 +2,19 @@ import sys
 import cv2
 import numpy as np
 import heapq
-global l, final_path, img, vidWriter
-
+from itertools import count
+global l, final_path, img, vidWriter, node_cnt
+sys.setrecursionlimit(10**6)
 
 class node:
-    global a
+    
     def __init__(self, location, parent):
+        global a, node_cnt
         self.loc = location
         self.value = a.map[location[0]][location[1]][1]
         self.parent = parent
+        self.counter = node_cnt
+        node_cnt += 1
 
 
 def area(x1, y1, x2, y2, x3, y3):  # area of triangle from points
@@ -130,27 +134,27 @@ class MapMake:
 
 def define_map():
     global a
-    a = MapMake(200, 300)
+    a = MapMake(300, 200)
 
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
 
 
     a.triangle_obstacle([20,120],[25,185],[50,150])  # upper left polygon
-    #a.triangle_obstacle1([25,185],[50,150],[75,185])
-    #a.triangle_obstacle1([75,185],[100,150],[50,150])
-    #a.triangle_obstacle1([50,150],[100,150],[75,120])
+    # a.triangle_obstacle1([25,185],[50,150],[75,185])
+    # a.triangle_obstacle1([75,185],[100,150],[50,150])
+    # a.triangle_obstacle1([50,150],[100,150],[75,120])
 
-    #a.triangle_obstacle1([225,10],[225,40],[250,25])  # lower right diamond
-    #a.triangle_obstacle1([225,10],[225,40],[200,25])
+    # a.triangle_obstacle1([225,10],[225,40],[250,25])  # lower right diamond
+    # a.triangle_obstacle1([225,10],[225,40],[200,25])
 
-    #point1 = [95,30]
-    #point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
-    #point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
-    #point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
+    # point1 = [95,30]
+    # point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
+    # point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
+    # point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
 
-    #a.triangle_obstacle1(point3,point1,point2)  # lower left rectangle
-    #a.triangle_obstacle1(point4,point3,point1)
+    # a.triangle_obstacle1(point3,point1,point2)  # lower left rectangle
+    # a.triangle_obstacle1(point4,point3,point1)
     a.clearance(10)
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
@@ -159,7 +163,7 @@ def visualize_map():   # a function to visualize the initial map generated with 
     #obstacle = [0,0,255]
     #clearance = [0,30,100]
     # resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
-    cv2.imshow('map',img)
+    cv2.imshow('map',cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE))
     cv2.waitKey()
 
 def point_in_obstacle(point): # checks if the point is in obstacle or clearance space:
@@ -202,8 +206,9 @@ def find_children(curr_node): # A function to find a node's possible children an
     for state_loc in child_loc:
         if a.map[state_loc[0]][state_loc[1]][1] > child_cost:
             a.map[state_loc[0]][state_loc[1]][1] = child_cost
-            children_list.append([child_cost,node(state_loc,curr_node)])
-    print(children_list)
+            child_node = node(state_loc, curr_node)
+            children_list.append((child_node.value, child_node.counter, child_node))
+    # print(children_list)
     return children_list # returns new cheaper childern
     #return children_list     # [(child1.val, child1), (child2.val, child2), (child3.val, child3)]
     
@@ -211,27 +216,32 @@ def find_children(curr_node): # A function to find a node's possible children an
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
     #vishnuu
     global img, vidWriter
-    img[curr_node.loc,0:3] = [0,255,(curr_node.value)/2]
-    vidWriter(img)
+    if curr_node.value != np.inf :
+        print(curr_node.loc)
+        img[curr_node.loc,0:3] = [0,0,(curr_node.value)/2]
+    vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
     
 
 def solver(curr_node): # A function to be recursively called to find the djikstra solution
     global l
+    # print (1)
     if (is_goal(curr_node)):
         find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
-        return 1
+        print("here")
+        return 
     add_image_frame(curr_node)
     children_list = find_children(curr_node) # a function to find possible children and update cost
     l = l + children_list                  # adding possible children to the list
+    # print (l)
     heapq.heapify(l)                    # converting to a list
-    solver(heapq.heappop(l)[1])            # recursive call to solver where we pass the element with the least cost 
-    return 0        
+    solver(heapq.heappop(l)[2])            # recursive call to solver where we pass the element with the least cost 
+    return 1        
 
-''' finding boundries to compare pixles to 
-f = max_and_min(list(([1,2],[4,100],[3,10],[0,0])))
-print(f)
-'''
+# ''' finding boundries to compare pixles to 
+# f = max_and_min(list(([1,2],[4,100],[3,10],[0,0])))
+# print(f)
+# '''
 
 
 if __name__=="__main__":
@@ -239,8 +249,12 @@ if __name__=="__main__":
     global end_pt
     global vidWriter
     global path
+    global node_cnt
+    global final_path
+    node_cnt = 0
+    final_path = []
     path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
-    vidWriter = cv2.VideoWriter(path + "Djikstra", cv2.VideoWriter_fourcc(*'mp4v'), 24, (1920,1080))
+    vidWriter = cv2.VideoWriter(path + "Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
     define_map()
@@ -249,14 +263,16 @@ if __name__=="__main__":
     while  valid_points == False:
         #start_pt = (input("Enter start point in form # #: "))
         #start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
-        start_pt = [5,5]
-
+        start_pt = [180,20]
+        img[start_pt,0:3] = [0,0,0]
 
         #end_pt = (input("Enter end point in form # #: "))
         #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
-        end_pt = [30,30]
+        end_pt = [190,50]
+        img[end_pt,0:3] = [0,0,0]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
+            continue
         else:
             valid_points = True
 
@@ -266,14 +282,14 @@ if __name__=="__main__":
     start_node = node(start_pt,None)
     start_node.value = 0
     global l
-    l = [(start_node.value, start_node)]
+    l = [(start_node.value, start_node.counter, start_node)]
 
     # define a priority queue and add first element
     heapq.heapify(l)
 
     # solve using djikstra
-    flag = solver(heapq.heappop(l)[1])
-
+    flag = solver(heapq.heappop(l)[2])
+    print(flag)
     # if found, visualise the path 
     if flag == 1:
         print("Path found. Please watch the video generated.")
