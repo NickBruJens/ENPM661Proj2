@@ -17,6 +17,9 @@ def area(x1, y1, x2, y2, x3, y3):  # area of triangle from points
     return abs((x1 * (y2 - y3) + x2 * (y3 - y1)
                 + x3 * (y1 - y2)) / 2.0)
 
+def sign(point1,point2,point3):
+    return (point1[0]-point3[0])*(point2[1]-point3[1])-(point2[0]-point3[0])*(point1[1]-point3[1])
+
 def max_and_min(point_list):
     point_list = np.array(point_list)
     max_x = max(point_list[:,0])
@@ -24,23 +27,6 @@ def max_and_min(point_list):
     max_y = max(point_list[:,1])
     min_y = min(point_list[:,1])
     return (min_x,min_y),(max_x,max_y)
-
-def is_HalfPlane(seg_point1, seg_point2, pixel_x, pixel_y): # 1 when below segment, 0 when above
-    a = (seg_point1[1] - seg_point2[1]) / (seg_point1[0] - seg_point2[0])
-    b = seg_point1[1] - a * seg_point1[0]
-
-    check = pixel_y - b - a * pixel_x
-
-    if check <= 0:
-        return 1
-    return 0
-'''
-seg1 = [0,0] half plane testing
-seg2 = [10,0]
-pointx = 12
-pointy = -3
-print(is_HalfPlane(seg1,seg2,pointx,pointy))
-'''
 
 # self.map is shape [NxMx2]
 # self.map[:,:,0:1] = [type of cell, cost to come]
@@ -74,28 +60,24 @@ class MapMake:
                     self.map[i, j, 0] = 1
                     img[i,j,0:3] = [0,0,255]
 
-    def triangle_obstacle(self, point1, point2, point3):  # makes triangle obstacle
-        tri_area = area(point1[0], point1[1], point2[0], point2[1], point3[0], point3[1])
 
-        for i in range(self.width_x):
-            for j in range(self.length_y):
-                a1 = area(i, j, point2[0], point2[1], point3[0], point3[1])
-                a2 = area(point1[0], point1[1], i, j, point3[0], point3[1])
-                a3 = area(point1[0], point1[1], point2[0], point2[1], i, j)
-                if np.abs(a1 + a2 + a3 - tri_area) <= .001:
-                    self.map[i, j, 0] = 1
-                    img[i,j,0:3] = [0,0,255]
-
-    def triangle_obstacle1(self, point1, point2, point3):  # makes triangle obstacle
-        min_point,max_point = max_and_min(np.array(point1,point2,point3))
-
+    def triangle_obstacle(self,three_points):  # makes triangle obstacle
+        v1 = three_points[0]
+        v2 = three_points[1]
+        v3 = three_points[2]
+        min_point,max_point = max_and_min(three_points)
         for i in np.arange(min_point[0],max_point[0],1):
-            for j in range(min_point[1],max_point[1],1):
-                cond_list = []
-                cond_list.append(is_HalfPlane(point1,point2,i,j))
-                cond_list.append(is_HalfPlane(point2,point3,i,j))
-                cond_list.append(is_HalfPlane(point3,point1,i,j))
-                print(cond_list)
+            for j in range(int(min_point[1]),int(max_point[1]),1):
+                pt = [i,j]
+                d1 = sign(pt, v1, v2)
+                d2 = sign(pt, v2, v3)
+                d3 = sign(pt, v3, v1)
+                neg = (d1 < 0) or (d2 < 0) or (d3 < 0)
+                pos = (d1 > 0) or (d2 > 0) or (d3 > 0)
+
+                if not (neg and pos):
+                    a.map[int(i)][int(j)][0] = 1
+                    img[int(i), int(j), 0:3] = [0, 0, 255]
 
     def clearance(self, clearance_distance):
         obstacles = np.where(self.map[:, :, 0] == 1)
@@ -130,28 +112,35 @@ class MapMake:
 
 def define_map():
     global a
-    a = MapMake(200, 300)
+    a = MapMake(300, 200)
 
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
 
 
-    a.triangle_obstacle([20,120],[25,185],[50,150])  # upper left polygon
-    #a.triangle_obstacle1([25,185],[50,150],[75,185])
-    #a.triangle_obstacle1([75,185],[100,150],[50,150])
-    #a.triangle_obstacle1([50,150],[100,150],[75,120])
+    a.triangle_obstacle(([20,120],[25,185],[50,150]))
+    a.triangle_obstacle(([50,150],[25,185],[75,185]))
+    a.triangle_obstacle(([50,150],[75,185],[100,150]))
+    a.triangle_obstacle(([50,150],[100,150],[75,120]))
 
-    #a.triangle_obstacle1([225,10],[225,40],[250,25])  # lower right diamond
-    #a.triangle_obstacle1([225,10],[225,40],[200,25])
 
-    #point1 = [95,30]
-    #point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
-    #point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
-    #point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
 
-    #a.triangle_obstacle1(point3,point1,point2)  # lower left rectangle
-    #a.triangle_obstacle1(point4,point3,point1)
+    a.triangle_obstacle(([25,185],[50,150],[75,185]))
+    a.triangle_obstacle(([75,185],[100,150],[50,150]))
+    a.triangle_obstacle(([50,150],[100,150],[75,120]))
+
+    a.triangle_obstacle(([225,10],[225,40],[250,25]))  # lower right diamond
+    a.triangle_obstacle(([225,10],[225,40],[200,25]))
+
+    point1 = [95,30]
+    point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
+    point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
+    point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
+
+    a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
+    a.triangle_obstacle((point4,point3,point1))
     a.clearance(10)
+
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
     global img
@@ -167,19 +156,38 @@ def point_in_obstacle(point): # checks if the point is in obstacle or clearance 
         return True
 
 def allowable_moves(point): # makes sure child states are new, not on obstacles, and are on the map
-    up,down,right,left = (point[0],point[1]+1),(point[0],point[1]-1),(point[0]+1,point[1]),(point[0]-1,point[1])
+    up,down,right,left = (point[0],point[1]+1),\
+                         (point[0],point[1]-1),\
+                         (point[0]+1,point[1]),\
+                         (point[0]-1,point[1])
     nw,ne,sw,se = (point[0]-1,point[1]+1),\
                   (point[0]+1,point[1]+1),\
                   (point[0]-1,point[1]-1),\
                   (point[0]+1,point[1]-1)
-    moves = list((up,down,right,left,nw,ne,sw,se))
-    for move in moves:
+    square_moves = list((up,down,right,left))
+    for move in square_moves:
         if point_in_obstacle(move):
-            moves.remove(move)  # this is in an obstacle
-        elif move[0] >= a.map.shape[0] or move[0] < 0: # went off map x
-            moves.remove(move)
-        elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
-            moves.remove(move)
+            square_moves.remove(move)  # this is in an obstacle
+        elif move[0] >= a.map.shape[0] or move[0] <= 0: # went off map x
+            square_moves.remove(move)
+        elif move[1] >= a.map.shape[1] or move[1] <= 0:  # went off map y
+            square_moves.remove(move)
+
+    dia_moves = list((nw,ne,sw,se))
+    for move in dia_moves:
+        if point_in_obstacle(move):
+            dia_moves.remove(move)  # this is in an obstacle
+        elif move[0] >= a.map.shape[0] or move[0] <= 0:  # went off map x
+            dia_moves.remove(move)
+        elif move[1] >= a.map.shape[1] or move[1] <= 0:  # went off map y
+            dia_moves.remove(move)
+
+    return square_moves,dia_moves
+
+
+
+
+
     return moves # returns new points that
 
 def is_goal(curr_node): # A function to check if current state is the goal point
@@ -196,15 +204,26 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
     return
 
 def find_children(curr_node): # A function to find a node's possible children and update cost in the map for each child
-    child_loc = allowable_moves(curr_node.loc)
-    child_cost = curr_node.value + 1
-    children_list = []
-    for state_loc in child_loc:
-        if a.map[state_loc[0]][state_loc[1]][1] > child_cost:
-            a.map[state_loc[0]][state_loc[1]][1] = child_cost
-            children_list.append([child_cost,node(state_loc,curr_node)])
-    print(children_list)
-    return children_list # returns new cheaper childern
+
+    sqr_child_loc = allowable_moves(curr_node.loc)[0]
+    sqr_child_cost = curr_node.value + 1
+    sqr_children_list = []
+    for state_loc in sqr_child_loc:
+        if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:
+            a.map[state_loc[0]][state_loc[1]][1] = sqr_child_cost
+            sqr_children_list.append((sqr_child_cost,node(state_loc,curr_node)))
+
+    dia_child_loc = allowable_moves(curr_node.loc)[1]
+    dia_child_cost = curr_node.value + np.sqrt(2)
+    dia_children_list = []
+    for state_loc in dia_child_loc:
+        if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:
+            a.map[state_loc[0]][state_loc[1]][1] = dia_child_cost
+            dia_children_list.append((dia_child_cost, node(state_loc, curr_node)))
+
+    childern_list = sqr_children_list + dia_children_list
+    return childern_list
+
     #return children_list     # [(child1.val, child1), (child2.val, child2), (child3.val, child3)]
     
 
@@ -216,7 +235,7 @@ def add_image_frame(curr_node): # A function to add the newly explored state to 
     return
     
 
-def solver(curr_node): # A function to be recursively called to find the djikstra solution
+def solver(curr_node):  # A function to be recursively called to find the djikstra solution
     global l
     if (is_goal(curr_node)):
         find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
@@ -228,18 +247,13 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
     solver(heapq.heappop(l)[1])            # recursive call to solver where we pass the element with the least cost 
     return 0        
 
-''' finding boundries to compare pixles to 
-f = max_and_min(list(([1,2],[4,100],[3,10],[0,0])))
-print(f)
-'''
-
 
 if __name__=="__main__":
     global start_pt
     global end_pt
     global vidWriter
     global path
-    path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
+    path = "~Desktop/ENPM661Proj2/"
     vidWriter = cv2.VideoWriter(path + "Djikstra", cv2.VideoWriter_fourcc(*'mp4v'), 24, (1920,1080))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
