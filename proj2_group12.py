@@ -143,7 +143,7 @@ def define_map():
 
     a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
     a.triangle_obstacle((point4,point3,point1))
-    a.clearance(10)
+    a.clearance(2)
 
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
@@ -172,18 +172,18 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
     for move in square_moves:
         if point_in_obstacle(move):
             square_moves.remove(move)  # this is in an obstacle
-        elif move[0] >= a.map.shape[0] or move[0] <= 0: # went off map x
+        elif move[0] >= a.map.shape[0] or move[0] < 0: # went off map x
             square_moves.remove(move)
-        elif move[1] >= a.map.shape[1] or move[1] <= 0:  # went off map y
+        elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
             square_moves.remove(move)
 
     dia_moves = list((nw,ne,sw,se))
     for move in dia_moves:
         if point_in_obstacle(move):
             dia_moves.remove(move)  # this is in an obstacle
-        elif move[0] >= a.map.shape[0] or move[0] <= 0:  # went off map x
+        elif move[0] >= a.map.shape[0] or move[0] < 0:  # went off map x
             dia_moves.remove(move)
-        elif move[1] >= a.map.shape[1] or move[1] <= 0:  # went off map y
+        elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
             dia_moves.remove(move)
 
     return square_moves,dia_moves
@@ -192,7 +192,7 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
 
 
 
-    return moves # returns new points that
+    # return moves # returns new points that
 
 def is_goal(curr_node): # A function to check if current state is the goal point
     if curr_node.loc[0] == end_pt[0] and curr_node.loc[1] == end_pt[1]:
@@ -215,7 +215,9 @@ def find_children(curr_node): # A function to find a node's possible children an
     for state_loc in sqr_child_loc:
         if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:
             a.map[state_loc[0]][state_loc[1]][1] = sqr_child_cost
-            sqr_children_list.append((sqr_child_cost,node(state_loc,curr_node)))
+            sqr_child_node = node(state_loc,curr_node)
+            print (state_loc)
+            sqr_children_list.append((sqr_child_node.value, sqr_child_node.counter, sqr_child_node))
 
     dia_child_loc = allowable_moves(curr_node.loc)[1]
     dia_child_cost = curr_node.value + np.sqrt(2)
@@ -223,7 +225,9 @@ def find_children(curr_node): # A function to find a node's possible children an
     for state_loc in dia_child_loc:
         if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:
             a.map[state_loc[0]][state_loc[1]][1] = dia_child_cost
-            dia_children_list.append((dia_child_cost, node(state_loc, curr_node)))
+            dia_child_node = node(state_loc, curr_node)
+            print (state_loc)
+            dia_children_list.append((dia_child_node.value, dia_child_node.counter, dia_child_node))
 
     childern_list = sqr_children_list + dia_children_list
     return childern_list
@@ -235,8 +239,8 @@ def add_image_frame(curr_node): # A function to add the newly explored state to 
     #vishnuu
     global img, vidWriter
     if curr_node.value != np.inf :
-        print(curr_node.loc)
-        img[curr_node.loc,0:3] = [0,0,(curr_node.value)/2]
+        # print(curr_node.loc)
+        img[curr_node.loc,0:3] = [255,0,0]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
     
@@ -255,6 +259,11 @@ def solver(curr_node):  # A function to be recursively called to find the djikst
     heapq.heapify(l)                    # converting to a list
     solver(heapq.heappop(l)[2])            # recursive call to solver where we pass the element with the least cost 
     return 1        
+
+# ''' finding boundries to compare pixles to 
+# f = max_and_min(list(([1,2],[4,100],[3,10],[0,0])))
+# print(f)
+# '''
 
 
 if __name__=="__main__":
@@ -282,7 +291,7 @@ if __name__=="__main__":
         #end_pt = (input("Enter end point in form # #: "))
         #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
         end_pt = [190,50]
-        img[end_pt,0:3] = [0,0,0]
+        img[end_pt,0:3] = [0,0,255]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
             continue
