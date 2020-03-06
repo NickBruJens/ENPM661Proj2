@@ -2,9 +2,11 @@ import sys
 import cv2
 import numpy as np
 import heapq
+import time
 from itertools import count
 global l, final_path, img, vidWriter, node_cnt
 sys.setrecursionlimit(10**6)
+
 
 class node:
     
@@ -16,24 +18,6 @@ class node:
         self.counter = node_cnt
         node_cnt += 1
 
-def sign(point1,point2,point3):
-    return (point1[0]-point3[0])*(point2[1]-point3[1])-(point2[0]-point3[0])*(point1[1]-point3[1])
-
-def max_and_min(point_list):
-    point_list = np.array(point_list)
-    max_x = max(point_list[:,0])
-    min_x = min(point_list[:,0])
-    max_y = max(point_list[:,1])
-    min_y = min(point_list[:,1])
-    return (min_x,min_y),(max_x,max_y)
-
-# self.map is shape [NxMx2]
-# self.map[:,:,0:1] = [type of cell, cost to come]
-# cell type 0 = free space
-# cell type 1 = obstacle
-# cell type 2 = clearance space
-# cell type 3 = goal
-# cell type 4 = start position if needed
 
 class MapMake:
 
@@ -109,6 +93,50 @@ class MapMake:
                         self.map[int(j),int(k),0] = 2
                         img[int(j),int(k),0:3] = [0,0,200]
 
+    def clearance1(self, clearance_distance):
+        obstacles = np.where(self.map[:, :, 0] == 1)
+        obstacles = np.array(obstacles)
+        obstacles = obstacles.T
+        obstacle_edges = []
+        obstacle_list = obstacles.tolist()
+
+        for i in range(len(obstacles)):
+            up = [obstacles[i][0], obstacles[i][1] + 1]
+            down = [obstacles[i][0], obstacles[i][1] - 1]
+            left = [obstacles[i][0] - 1, obstacles[i][1]]
+            right = [obstacles[i][0] + 1, obstacles[i][1]]
+
+            surrounded = (up in obstacle_list) and \
+                         (down in obstacle_list) and \
+                         (left in obstacle_list) and \
+                         (right in obstacle_list)
+
+            if not surrounded:
+                obstacle_edges.append(obstacles[i])  # only compares pixel indices to edge of obstacle
+
+        for i in range(len(obstacle_edges)):
+            xmin, xmax = obstacle_edges[i][0] - clearance_distance, obstacle_edges[i][0] + clearance_distance
+            ymin, ymax = obstacle_edges[i][1] - clearance_distance, obstacle_edges[i][1] + clearance_distance
+            for j in np.arange(xmin, xmax, 1):
+                for k in np.arange(ymin, ymax, 1):
+                    dist = np.sqrt(np.square(int(j) - obstacle_edges[i][0]) + np.square(int(k) - obstacle_edges[i][1]))
+                    if dist <= clearance_distance and self.map[int(j), int(k), 0] != 1:
+                        self.map[int(j), int(k), 0] = 2
+                        img[int(j), int(k), 0:3] = [0, 0, 200]
+
+
+def sign(point1,point2,point3):
+    return (point1[0]-point3[0])*(point2[1]-point3[1])-(point2[0]-point3[0])*(point1[1]-point3[1])
+
+
+def max_and_min(point_list):
+    point_list = np.array(point_list)
+    max_x = max(point_list[:,0])
+    min_x = min(point_list[:,0])
+    max_y = max(point_list[:,1])
+    min_y = min(point_list[:,1])
+    return (min_x,min_y),(max_x,max_y)
+
 
 def define_map():
     global a
@@ -116,13 +144,10 @@ def define_map():
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
 
-
     a.triangle_obstacle(([20,120],[25,185],[50,150]))
     a.triangle_obstacle(([50,150],[25,185],[75,185]))
     a.triangle_obstacle(([50,150],[75,185],[100,150]))
     a.triangle_obstacle(([50,150],[100,150],[75,120]))
-
-
 
     a.triangle_obstacle(([25,185],[50,150],[75,185]))
     a.triangle_obstacle(([75,185],[100,150],[50,150]))
@@ -138,8 +163,7 @@ def define_map():
 
     a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
     a.triangle_obstacle((point4,point3,point1))
-    a.clearance(10)
-
+    #a.clearance(10)
 
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
@@ -151,45 +175,49 @@ def visualize_map():   # a function to visualize the initial map generated with 
     cv2.imshow('map',cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE))
     cv2.waitKey()
 
-def point_in_obstacle(point): # checks if the point is in obstacle or clearance space:
-    if a.map[point[0]][point[1]][0] == 1 or a.map[point[0]][point[1]][0] == 2:
+
+def point_in_obstacle(point):             # checks is a point is in an obstacle
+    if a.map[point[0]][point[1]][0] != 0:
         return True
     else:
         return False
 
-def allowable_moves(point): # makes sure child states are new, not on obstacles, and are on the map
+
+def allowable_moves(point):  # makes child states that are on the map and not on obstacles
+
     up,down,right,left = (point[0],point[1]+1),\
                          (point[0],point[1]-1),\
                          (point[0]+1,point[1]),\
-                         (point[0]-1,point[1])
+                         (point[0]-1,point[1])            # possible cardinal moves
+
     nw,ne,sw,se = (point[0]-1,point[1]+1),\
                   (point[0]+1,point[1]+1),\
                   (point[0]-1,point[1]-1),\
-                  (point[0]+1,point[1]-1)
-    test_square_moves = list((up,down,right,left))
-    allowable_square_moves = []
+                  (point[0]+1,point[1]-1)                 # possible diagonal moves
 
+    test_square_moves = list((up,down,right,left))        # cardinal moves
+    allowable_square_moves = []
     for move in test_square_moves:
-        if a.map[move[0],move[1],0] == 0 : # if not in obstacle
-            if move[0] < a.map.shape[0] and move[0] >= 0: # within x
-                if move[1] < a.map.shape[1] and move[1] >= 0:  # within y
+        if a.map[move[0],move[1],0] == 0 :                # if not in obstacle
+            if a.map.shape[0] > move[0] >= 0:             # if on map X
+                if a.map.shape[1] > move[1] >= 0:         # if on map y
                     allowable_square_moves.append(move)
 
-
-    test_dia_moves = list((nw,ne,sw,se))
+    test_dia_moves = list((nw,ne,sw,se))                  # diagonal moves
     allowable_dia_moves = []
-    test_dia = test_dia_moves
-    for move in test_dia:
-        if a.map[move[0],move[1],0] == 0 :
-            if move[0] < a.map.shape[0] and move[0] >= 0:  # went off map x
-                if move[1] < a.map.shape[1] and move[1] >= 0:  # went off map y
+    for move in test_dia_moves:
+        if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
+            if a.map.shape[0] > move[0] >= 0:             # if on the map x
+                if a.map.shape[1] > move[1] >= 0:         # if on the map y
                     allowable_dia_moves.append(move)
 
-    return allowable_square_moves,allowable_dia_moves
+    return allowable_square_moves, allowable_dia_moves
 
-def is_goal(curr_node): # A function to check if current state is the goal point
+
+def is_goal(curr_node):              # checks if the current node is also the goal
     if curr_node.loc[0] == end_pt[0] and curr_node.loc[1] == end_pt[1]:
         return True
+
 
 def find_path(curr_node): # A function to find the path uptil the root by tracking each node's parent
     #vishnuu
@@ -200,28 +228,29 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
     vidWriter.release()     
     return
 
-def find_children(curr_node): # A function to find a node's possible children and update cost in the map for each child
 
-    sqr_child_loc = allowable_moves(curr_node.loc)[0]
-    sqr_child_cost = curr_node.value + 1
+def find_children(curr_node):
+
+    sqr_child_loc = allowable_moves(curr_node.loc)[0]  # gets allowable cardinal moves
+    sqr_child_cost = curr_node.value + 1               # square move cost
     sqr_children_list = []
     for state_loc in sqr_child_loc:
-        if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:
-            a.map[state_loc[0]][state_loc[1]][1] = sqr_child_cost
-            sqr_child_node = node(state_loc,curr_node)
+        if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:  # if the child cost is less from the current node
+            a.map[state_loc[0]][state_loc[1]][1] = sqr_child_cost  # update map node to lesser cost
+            sqr_child_node = node(state_loc,curr_node)              # create new child node
             sqr_children_list.append((sqr_child_node.value, sqr_child_node.counter, sqr_child_node))
 
-    dia_child_loc = allowable_moves(curr_node.loc)[1]
-    dia_child_cost = curr_node.value + np.sqrt(2)
+    dia_child_loc = allowable_moves(curr_node.loc)[1]  # gets allowable diagonal moves
+    dia_child_cost = curr_node.value + np.sqrt(2)      # diagonal moves cost
     dia_children_list = []
     for state_loc in dia_child_loc:
-        if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:
-            a.map[state_loc[0]][state_loc[1]][1] = dia_child_cost
-            dia_child_node = node(state_loc, curr_node)
+        if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:  # if the child cost is less from the current node
+            a.map[state_loc[0]][state_loc[1]][1] = dia_child_cost  # update map node to lesser cost
+            dia_child_node = node(state_loc, curr_node)            # create new child node
             dia_children_list.append((dia_child_node.value, dia_child_node.counter, dia_child_node))
 
-    childern_list = sqr_children_list + dia_children_list
-    return childern_list
+    children_list = sqr_children_list + dia_children_list
+    return children_list  # list of all children with a lesser cost for the current node
 
 
     
@@ -263,7 +292,9 @@ if __name__=="__main__":
     vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
+    define_map_start = time.time()
     define_map()
+    print("Time to define map: " + str(time.time()-define_map_start))
     visualize_map()
 
     valid_points = False
