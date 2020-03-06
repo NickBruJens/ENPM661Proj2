@@ -17,6 +17,31 @@ def area(x1, y1, x2, y2, x3, y3):  # area of triangle from points
     return abs((x1 * (y2 - y3) + x2 * (y3 - y1)
                 + x3 * (y1 - y2)) / 2.0)
 
+def max_and_min(point_list):
+    point_list = np.array(point_list)
+    max_x = max(point_list[:,0])
+    min_x = min(point_list[:,0])
+    max_y = max(point_list[:,1])
+    min_y = min(point_list[:,1])
+    return (min_x,min_y),(max_x,max_y)
+
+def is_HalfPlane(seg_point1, seg_point2, pixel_x, pixel_y): # 1 when below segment, 0 when above
+    a = (seg_point1[1] - seg_point2[1]) / (seg_point1[0] - seg_point2[0])
+    b = seg_point1[1] - a * seg_point1[0]
+
+    check = pixel_y - b - a * pixel_x
+
+    if check <= 0:
+        return 1
+    return 0
+
+seg1 = [0,0]
+seg2 = [10,0]
+pointx = 12
+pointy = -3
+print(is_HalfPlane(seg1,seg2,pointx,pointy))
+
+
 # self.map is shape [NxMx2]
 # self.map[:,:,0:1] = [type of cell, cost to come]
 # cell type 0 = free space
@@ -34,20 +59,22 @@ class MapMake:
         self.map[:,:, 1] = np.inf                   # last element stores the cost to come
 
     def circle_obstacle(self, xpos, ypos, radius):  # makes a circle obstacle
-        for i in range(self.width_x):
-            for j in range(self.length_y):
+        for i in np.arange(xpos-radius,xpos+radius,1):
+            for j in np.arange(ypos-radius,ypos+radius,1):
                 if np.sqrt(np.square(ypos - j) + np.square(xpos - i)) <= radius:
                     self.map[i, j, 0] = 1
                     img[i,j,0:3] = [0,0,255]
 
     def oval_obstacle(self, xpos, ypos, radius_x, radius_y):  # makes oval obstacle
-        for i in range(self.width_x):
-            for j in range(self.length_y):
+        for i in np.arange(xpos-radius_x,xpos+radius_x,1):
+            for j in np.arange(ypos-radius_y,ypos+radius_y,1):
                 first_oval_term = np.square(i - xpos) / np.square(radius_x)
                 second_oval_term = np.square(j - ypos) / np.square(radius_y)
                 if first_oval_term + second_oval_term <= 1:
                     self.map[i, j, 0] = 1
                     img[i,j,0:3] = [0,0,255]
+
+
 
     def triangle_obstacle(self, point1, point2, point3):  # makes triangle obstacle
         tri_area = area(point1[0], point1[1], point2[0], point2[1], point3[0], point3[1])
@@ -60,6 +87,19 @@ class MapMake:
                 if np.abs(a1 + a2 + a3 - tri_area) <= .001:
                     self.map[i, j, 0] = 1
                     img[i,j,0:3] = [0,0,255]
+
+    def triangle_obstacle1(self, point1, point2, point3):  # makes triangle obstacle
+        min_point,max_point = max_and_min(np.array(point1,point2,point3))
+
+        for i in np.arange(min_point[0],max_point[0],1):
+            for j in range(min_point[1],max_point[1],1):
+                cond_list = []
+                cond_list.append(is_HalfPlane(point1,point2,i,j))
+                cond_list.append(is_HalfPlane(point2,point3,i,j))
+                cond_list.append(is_HalfPlane(point3,point1,i,j))
+                print(cond_list)
+
+
 
     def clearance(self, clearance_distance):
         obstacles = np.where(self.map[:, :, 0] == 1)
@@ -101,20 +141,20 @@ def define_map():
 
 
     a.triangle_obstacle([20,120],[25,185],[50,150])  # upper left polygon
-    a.triangle_obstacle([25,185],[50,150],[75,185])
-    a.triangle_obstacle([75,185],[100,150],[50,150])
-    a.triangle_obstacle([50,150],[100,150],[75,120])
+    #a.triangle_obstacle1([25,185],[50,150],[75,185])
+    #a.triangle_obstacle1([75,185],[100,150],[50,150])
+    #a.triangle_obstacle1([50,150],[100,150],[75,120])
 
-    a.triangle_obstacle([225,10],[225,40],[250,25])  # lower right diamond
-    a.triangle_obstacle([225,10],[225,40],[200,25])
+    #a.triangle_obstacle1([225,10],[225,40],[250,25])  # lower right diamond
+    #a.triangle_obstacle1([225,10],[225,40],[200,25])
 
     point1 = [95,30]
     point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
     point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
     point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
 
-    a.triangle_obstacle(point3,point1,point2)  # lower left rectangle
-    a.triangle_obstacle(point4,point3,point1)
+    #a.triangle_obstacle1(point3,point1,point2)  # lower left rectangle
+    #a.triangle_obstacle1(point4,point3,point1)
     a.clearance(10)
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
@@ -187,6 +227,10 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
     return 0        
 
 
+f = max_and_min(list(([1,2],[4,100],[3,10],[0,0])))
+print(f)
+
+
 
 if __name__=="__main__":
     global start_pt
@@ -194,7 +238,7 @@ if __name__=="__main__":
     global vidWriter
     global path
     path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
-    vidWriter = cv2.VideoWriter(path+"Djikstra", cv2.VideoWriter_fourcc(*'mp4v'), 24, (1920,1080))
+    vidWriter = cv2.VideoWriter("Djikstra", cv2.VideoWriter_fourcc(*'mp4v'), 24, (1920,1080))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
     define_map()
