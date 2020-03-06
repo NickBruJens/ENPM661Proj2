@@ -45,7 +45,7 @@ class MapMake:
     def __init__(self, width_x, length_y):
         self.width_x = width_x
         self.length_y = length_y
-        self.map = np.zeros([width_x, length_y, 4]) # declaration
+        self.map = np.zeros([width_x, length_y, 2]) # declaration
         self.map[:,:, 1] = np.inf                   # last element stores the cost to come
 
     def circle_obstacle(self, xpos, ypos, radius):  # makes a circle obstacle
@@ -114,9 +114,12 @@ class MapMake:
                         self.map[int(j),int(k),0] = 2
                         img[int(j),int(k),0:3] = [0,0,200]
 
+
 def define_map():
     global a
     a = MapMake(300, 200)
+    print('this is the first map shape--')
+    print(a.map.shape)
 
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
@@ -143,7 +146,8 @@ def define_map():
 
     a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
     a.triangle_obstacle((point4,point3,point1))
-    a.clearance(2)
+    #a.clearance(2)
+
 
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
@@ -156,8 +160,10 @@ def visualize_map():   # a function to visualize the initial map generated with 
     cv2.waitKey()
 
 def point_in_obstacle(point): # checks if the point is in obstacle or clearance space:
-    if a.map[point[0],point[1],0] == 1 or a.map[point[0],point[1],0] == 2:
+    if a.map[point[0]][point[1]][0] == 1 or a.map[point[0]][point[1]][0] == 2:
         return True
+    else:
+        return False
 
 def allowable_moves(point): # makes sure child states are new, not on obstacles, and are on the map
     up,down,right,left = (point[0],point[1]+1),\
@@ -168,25 +174,27 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
                   (point[0]+1,point[1]+1),\
                   (point[0]-1,point[1]-1),\
                   (point[0]+1,point[1]-1)
-    square_moves = list((up,down,right,left))
-    for move in square_moves:
-        if point_in_obstacle(move):
-            square_moves.remove(move)  # this is in an obstacle
-        elif move[0] >= a.map.shape[0] or move[0] < 0: # went off map x
-            square_moves.remove(move)
-        elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
-            square_moves.remove(move)
+    test_square_moves = list((up,down,right,left))
+    allowable_square_moves = []
 
-    dia_moves = list((nw,ne,sw,se))
-    for move in dia_moves:
-        if point_in_obstacle(move):
-            dia_moves.remove(move)  # this is in an obstacle
-        elif move[0] >= a.map.shape[0] or move[0] < 0:  # went off map x
-            dia_moves.remove(move)
-        elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
-            dia_moves.remove(move)
+    print('this is the point--')
+    for move in test_square_moves:
+        if a.map[move[0],move[1],0] == 0 : # if not in obstacle
+            if move[0] < a.map.shape[0] and move[0] >= 0: # within x
+                if move[1] < a.map.shape[1] and move[1] >= 0:  # within y
+                    allowable_square_moves.append(move)
 
-    return square_moves,dia_moves
+
+    test_dia_moves = list((nw,ne,sw,se))
+    allowable_dia_moves = []
+    test_dia = test_dia_moves
+    for move in test_dia:
+        if a.map[move[0],move[1],0] == 0 :
+            if move[0] < a.map.shape[0] and move[0] >= 0:  # went off map x
+                if move[1] < a.map.shape[1] and move[1] >= 0:  # went off map y
+                    allowable_dia_moves.append(move)
+
+    return allowable_square_moves,allowable_dia_moves
 
 
 
@@ -240,7 +248,7 @@ def add_image_frame(curr_node): # A function to add the newly explored state to 
     global img, vidWriter
     if curr_node.value != np.inf :
         # print(curr_node.loc)
-        img[curr_node.loc,0:3] = [255,0,0]
+        img[curr_node.loc[0]][curr_node.loc[1]][0:3] = [255,0,0]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
     
@@ -275,23 +283,27 @@ if __name__=="__main__":
     global final_path
     node_cnt = 0
     final_path = []
-    path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
-    vidWriter = cv2.VideoWriter(path + "Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
+    #path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
+    #vidWriter = cv2.VideoWriter(path + "Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
+    vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
     define_map()
     visualize_map()
+    print('this is the map shape for the inital test')
+    print(a.map.shape)
+
     valid_points = False
     while  valid_points == False:
         #start_pt = (input("Enter start point in form # #: "))
         #start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
-        start_pt = [180,20]
-        img[start_pt,0:3] = [0,0,0]
+        start_pt = [20,100]
+        img[start_pt[0]][start_pt[1]][0:3] = [0,0,0]
 
         #end_pt = (input("Enter end point in form # #: "))
         #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
-        end_pt = [190,50]
-        img[end_pt,0:3] = [0,0,255]
+        end_pt = [20,20]
+        img[end_pt[0]][end_pt[1]][0:3] = [0,0,255]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
             continue
