@@ -5,6 +5,7 @@ import heapq
 from itertools import count
 global l, final_path, img, vidWriter, node_cnt
 sys.setrecursionlimit(10**6)
+sys.settrace(exception)
 
 class node:
     
@@ -138,7 +139,7 @@ def define_map():
 
     a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
     a.triangle_obstacle((point4,point3,point1))
-    a.clearance(10)
+    a.clearance(2)
 
 
 
@@ -199,7 +200,9 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
         curr_node = curr_node.parent
     for i in final_path:
         img[i.loc[0], i.loc[1], 0:3] = [255,0,0]
+        cv2.waitKey(10)
         vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
+        
     vidWriter.release()         
     return
 
@@ -233,7 +236,7 @@ def find_children(curr_node): # A function to find a node's possible children an
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
     #vishnuu
     global img, vidWriter
-    img[curr_node.loc[0], curr_node.loc[1],0:3] = [0,255,np.min([127 + curr_node.value], [255]) ]
+    img[curr_node.loc[0], curr_node.loc[1],0:3] = [0,255,np.min([50 + curr_node.value*4, 255]) ]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
     
@@ -263,7 +266,7 @@ if __name__=="__main__":
     final_path = []
     #path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
     #vidWriter = cv2.VideoWriter(path + "Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
-    vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
+    vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 48, (300,200))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
     define_map()
@@ -273,12 +276,12 @@ if __name__=="__main__":
     while  valid_points == False:
         #start_pt = (input("Enter start point in form # #: "))
         #start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
-        start_pt = [20,100]
+        start_pt = [150,20]
         img[start_pt[0]][start_pt[1]][0:3] = [0,0,0]
 
         #end_pt = (input("Enter end point in form # #: "))
         #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
-        end_pt = [20,20]
+        end_pt = [150,180]
         img[end_pt[0]][end_pt[1]][0:3] = [0,0,255]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
@@ -299,7 +302,7 @@ if __name__=="__main__":
 
     # solve using djikstra
     flag = solver(heapq.heappop(l)[2])
-    print(flag)
+    # print(flag)
     # if found, visualise the path 
     if flag == 1:
         print("Path found. Please watch the video generated.")
