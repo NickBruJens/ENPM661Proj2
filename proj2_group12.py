@@ -9,7 +9,7 @@ class node:
     global a
     def __init__(self, location, parent):
         self.loc = location
-        self.value = a.map[location[0],location[1],1]
+        self.value = a.map[location[0]][location[1]][1]
         self.parent = parent
 
 
@@ -34,13 +34,13 @@ def is_HalfPlane(seg_point1, seg_point2, pixel_x, pixel_y): # 1 when below segme
     if check <= 0:
         return 1
     return 0
-
-seg1 = [0,0]
+'''
+seg1 = [0,0] half plane testing
 seg2 = [10,0]
 pointx = 12
 pointy = -3
 print(is_HalfPlane(seg1,seg2,pointx,pointy))
-
+'''
 
 # self.map is shape [NxMx2]
 # self.map[:,:,0:1] = [type of cell, cost to come]
@@ -74,8 +74,6 @@ class MapMake:
                     self.map[i, j, 0] = 1
                     img[i,j,0:3] = [0,0,255]
 
-
-
     def triangle_obstacle(self, point1, point2, point3):  # makes triangle obstacle
         tri_area = area(point1[0], point1[1], point2[0], point2[1], point3[0], point3[1])
 
@@ -98,8 +96,6 @@ class MapMake:
                 cond_list.append(is_HalfPlane(point2,point3,i,j))
                 cond_list.append(is_HalfPlane(point3,point1,i,j))
                 print(cond_list)
-
-
 
     def clearance(self, clearance_distance):
         obstacles = np.where(self.map[:, :, 0] == 1)
@@ -148,10 +144,10 @@ def define_map():
     #a.triangle_obstacle1([225,10],[225,40],[250,25])  # lower right diamond
     #a.triangle_obstacle1([225,10],[225,40],[200,25])
 
-    point1 = [95,30]
-    point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
-    point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
-    point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
+    #point1 = [95,30]
+    #point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
+    #point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
+    #point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
 
     #a.triangle_obstacle1(point3,point1,point2)  # lower left rectangle
     #a.triangle_obstacle1(point4,point3,point1)
@@ -180,8 +176,6 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
     for move in moves:
         if point_in_obstacle(move):
             moves.remove(move)  # this is in an obstacle
-        elif a.map[move[0],move[1], 1] != np.inf:
-            moves.remove(move)  # this state was already explored
         elif move[0] >= a.map.shape[0] or move[0] < 0: # went off map x
             moves.remove(move)
         elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
@@ -189,8 +183,8 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
     return moves # returns new points that
 
 def is_goal(curr_node): # A function to check if current state is the goal point
-    #nick
-    pass
+    if curr_node.loc[0] == end_pt[0] and curr_node.loc[1] == end_pt[1]:
+        return True
 
 def find_path(curr_node): # A function to find the path uptil the root by tracking each node's parent
     #vishnuu
@@ -202,8 +196,16 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
     return
 
 def find_children(curr_node): # A function to find a node's possible children and update cost in the map for each child
-    #nick
-    return children_list     # [(child1.val, child1), (child2.val, child2), (child3.val, child3)]
+    child_loc = allowable_moves(curr_node.loc)
+    child_cost = curr_node.value + 1
+    children_list = []
+    for state_loc in child_loc:
+        if a.map[state_loc[0]][state_loc[1]][1] > child_cost:
+            a.map[state_loc[0]][state_loc[1]][1] = child_cost
+            children_list.append([child_cost,node(state_loc,curr_node)])
+    print(children_list)
+    return children_list # returns new cheaper childern
+    #return children_list     # [(child1.val, child1), (child2.val, child2), (child3.val, child3)]
     
 
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
@@ -219,17 +221,17 @@ def solver(curr_node): # A function to be recursively called to find the djikstr
     if (is_goal(curr_node)):
         find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
         return 1
-    add_image_frame(curr_node) 
+    add_image_frame(curr_node)
     children_list = find_children(curr_node) # a function to find possible children and update cost
     l = l + children_list                  # adding possible children to the list
-    heapq.heapify(l)                    # converting to a list 
+    heapq.heapify(l)                    # converting to a list
     solver(heapq.heappop(l)[1])            # recursive call to solver where we pass the element with the least cost 
     return 0        
 
-
+''' finding boundries to compare pixles to 
 f = max_and_min(list(([1,2],[4,100],[3,10],[0,0])))
 print(f)
-
+'''
 
 
 if __name__=="__main__":
@@ -238,26 +240,31 @@ if __name__=="__main__":
     global vidWriter
     global path
     path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
-    vidWriter = cv2.VideoWriter("Djikstra", cv2.VideoWriter_fourcc(*'mp4v'), 24, (1920,1080))
+    vidWriter = cv2.VideoWriter(path + "Djikstra", cv2.VideoWriter_fourcc(*'mp4v'), 24, (1920,1080))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
     define_map()
     visualize_map()
     valid_points = False
     while  valid_points == False:
-        start_pt = (input("Enter start point in form # #: "))
-        start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
+        #start_pt = (input("Enter start point in form # #: "))
+        #start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
+        start_pt = [5,5]
 
-        end_pt = (input("Enter end point in form # #: "))
-        end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
+
+        #end_pt = (input("Enter end point in form # #: "))
+        #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
+        end_pt = [30,30]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
         else:
             valid_points = True
 
+    a.map[start_pt, 1] = 0
 
     # create start node belonging to class node
     start_node = node(start_pt,None)
+    start_node.value = 0
     global l
     l = [(start_node.value, start_node)]
 
