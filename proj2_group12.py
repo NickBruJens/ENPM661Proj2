@@ -158,6 +158,7 @@ def visualize_map():   # a function to visualize the initial map generated with 
 def point_in_obstacle(point): # checks if the point is in obstacle or clearance space:
     if a.map[point[0],point[1],0] == 1 or a.map[point[0],point[1],0] == 2:
         return True
+    return False
 
 def allowable_moves(point): # makes sure child states are new, not on obstacles, and are on the map
     up,down,right,left = (point[0],point[1]+1),\
@@ -169,12 +170,15 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
                   (point[0]-1,point[1]-1),\
                   (point[0]+1,point[1]-1)
     square_moves = list((up,down,right,left))
+    print (square_moves)
     for move in square_moves:
         if point_in_obstacle(move):
             square_moves.remove(move)  # this is in an obstacle
         elif move[0] >= a.map.shape[0] or move[0] < 0: # went off map x
+            print ("went of x for square ")
             square_moves.remove(move)
         elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
+            print ("went of y for square")
             square_moves.remove(move)
 
     dia_moves = list((nw,ne,sw,se))
@@ -183,8 +187,10 @@ def allowable_moves(point): # makes sure child states are new, not on obstacles,
             dia_moves.remove(move)  # this is in an obstacle
         elif move[0] >= a.map.shape[0] or move[0] < 0:  # went off map x
             dia_moves.remove(move)
+            print ("went of x for diagonal")
         elif move[1] >= a.map.shape[1] or move[1] < 0:  # went off map y
             dia_moves.remove(move)
+            print ("went of y for diagonal")
 
     return square_moves,dia_moves
 
@@ -204,7 +210,10 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
     while(curr_node!=None):
         final_path.insert(0, curr_node)
         curr_node = curr_node.parent
-    vidWriter.release()     
+    for i in final_path:
+        img[i.loc[0], i.loc[1], 0:3] = [255,0,0]
+        vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
+    vidWriter.release()         
     return
 
 def find_children(curr_node): # A function to find a node's possible children and update cost in the map for each child
@@ -213,18 +222,19 @@ def find_children(curr_node): # A function to find a node's possible children an
     sqr_child_cost = curr_node.value + 1
     sqr_children_list = []
     for state_loc in sqr_child_loc:
-        if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:
-            a.map[state_loc[0]][state_loc[1]][1] = sqr_child_cost
+        # print (state_loc)
+        if a.map[state_loc[0], state_loc[1], 1] > sqr_child_cost:
+            a.map[state_loc[0], state_loc[1], 1] = sqr_child_cost
             sqr_child_node = node(state_loc,curr_node)
-            print (state_loc)
+            # print (state_loc)
             sqr_children_list.append((sqr_child_node.value, sqr_child_node.counter, sqr_child_node))
 
     dia_child_loc = allowable_moves(curr_node.loc)[1]
     dia_child_cost = curr_node.value + np.sqrt(2)
     dia_children_list = []
     for state_loc in dia_child_loc:
-        if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:
-            a.map[state_loc[0]][state_loc[1]][1] = dia_child_cost
+        if a.map[state_loc[0], state_loc[1], 1] > dia_child_cost:
+            a.map[state_loc[0], state_loc[1], 1] = dia_child_cost
             dia_child_node = node(state_loc, curr_node)
             print (state_loc)
             dia_children_list.append((dia_child_node.value, dia_child_node.counter, dia_child_node))
@@ -238,9 +248,9 @@ def find_children(curr_node): # A function to find a node's possible children an
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
     #vishnuu
     global img, vidWriter
-    if curr_node.value != np.inf :
+    # if curr_node.value != np.inf :
         # print(curr_node.loc)
-        img[curr_node.loc,0:3] = [255,0,0]
+    img[curr_node.loc[0], curr_node.loc[1],0:3] = [0,255,np.min([127 + curr_node.value], [255]) ]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
     
@@ -286,19 +296,19 @@ if __name__=="__main__":
         #start_pt = (input("Enter start point in form # #: "))
         #start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
         start_pt = [180,20]
-        img[start_pt,0:3] = [0,0,0]
+        img[start_pt[0], start_pt[1], 0:3] = [0,0,0]
 
         #end_pt = (input("Enter end point in form # #: "))
         #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
         end_pt = [190,50]
-        img[end_pt,0:3] = [0,0,255]
+        img[end_pt[0], end_pt[1], 0:3] = [0,0,255]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
             continue
         else:
             valid_points = True
 
-    a.map[start_pt, 1] = 0
+    a.map[start_pt[0], start_pt[1], 1] = 0
 
     # create start node belonging to class node
     start_node = node(start_pt,None)
