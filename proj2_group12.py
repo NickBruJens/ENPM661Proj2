@@ -5,7 +5,7 @@ import heapq
 import time
 from itertools import count
 global l, final_path, img, vidWriter, node_cnt
-sys.setrecursionlimit(10**6)
+sys.setrecursionlimit(10**9)
 #sys.settrace(exception)
 
 
@@ -94,38 +94,6 @@ class MapMake:
                         self.map[int(j),int(k),0] = 2
                         img[int(j),int(k),0:3] = [0,0,200]
 
-    def clearance1(self, clearance_distance):
-        obstacles = np.where(self.map[:, :, 0] == 1)
-        obstacles = np.array(obstacles)
-        obstacles = obstacles.T
-        obstacle_edges = []
-        obstacle_list = obstacles.tolist()
-
-        for i in range(len(obstacles)):
-            up = [obstacles[i][0], obstacles[i][1] + 1]
-            down = [obstacles[i][0], obstacles[i][1] - 1]
-            left = [obstacles[i][0] - 1, obstacles[i][1]]
-            right = [obstacles[i][0] + 1, obstacles[i][1]]
-
-            surrounded = (up in obstacle_list) and \
-                         (down in obstacle_list) and \
-                         (left in obstacle_list) and \
-                         (right in obstacle_list)
-
-            if not surrounded:
-                obstacle_edges.append(obstacles[i])  # only compares pixel indices to edge of obstacle
-
-        for i in range(len(obstacle_edges)):
-            xmin, xmax = obstacle_edges[i][0] - clearance_distance, obstacle_edges[i][0] + clearance_distance
-            ymin, ymax = obstacle_edges[i][1] - clearance_distance, obstacle_edges[i][1] + clearance_distance
-            for j in np.arange(xmin, xmax, 1):
-                for k in np.arange(ymin, ymax, 1):
-                    dist = np.sqrt(np.square(int(j) - obstacle_edges[i][0]) + np.square(int(k) - obstacle_edges[i][1]))
-                    if dist <= clearance_distance and self.map[int(j), int(k), 0] != 1:
-                        self.map[int(j), int(k), 0] = 2
-                        img[int(j), int(k), 0:3] = [0, 0, 200]
-
-
 def sign(point1,point2,point3):
     return (point1[0]-point3[0])*(point2[1]-point3[1])-(point2[0]-point3[0])*(point1[1]-point3[1])
 
@@ -139,7 +107,7 @@ def max_and_min(point_list):
     return (min_x,min_y),(max_x,max_y)
 
 
-def define_map():
+def define_map(clear_r):
     global a
     a = MapMake(300, 200)
     a.circle_obstacle(225, 150, 25)  # upper right circle
@@ -164,16 +132,13 @@ def define_map():
 
     a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
     a.triangle_obstacle((point4,point3,point1))
-    a.clearance(2)
+    if clear_r != 0:
+        a.clearance(clear_r)
 
 
 
 def visualize_map():   # a function to visualize the initial map generated with just obstacles
     global img
-    #free_space = [0,255,0] # what the values where before
-    #obstacle = [0,0,255]
-    #clearance = [0,30,100]
-    # resized = cv2.resize(np.rot90(a.map[:, :, 0:3]), (900,600))
     cv2.imshow('map',cv2.rotate(img, cv2.ROTATE_90_COUNTERCLOCKWISE))
     cv2.waitKey()
 
@@ -224,7 +189,7 @@ def is_goal(curr_node):              # checks if the current node is also the go
 
 
 def find_path(curr_node): # A function to find the path uptil the root by tracking each node's parent
-    #vishnuu
+
     global final_path
     while(curr_node!=None):
         final_path.insert(0, curr_node)
@@ -239,9 +204,10 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
 
 
 def find_children(curr_node):
+    test_node = curr_node
 
     sqr_child_loc = allowable_moves(curr_node.loc)[0]  # gets allowable cardinal moves
-    sqr_child_cost = curr_node.value + 1               # square move cost
+    sqr_child_cost = test_node.value + 1               # square move cost
     sqr_children_list = []
     for state_loc in sqr_child_loc:
         if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:  # if the child cost is less from the current node
@@ -250,7 +216,7 @@ def find_children(curr_node):
             sqr_children_list.append((sqr_child_node.value, sqr_child_node.counter, sqr_child_node))
 
     dia_child_loc = allowable_moves(curr_node.loc)[1]  # gets allowable diagonal moves
-    dia_child_cost = curr_node.value + np.sqrt(2)      # diagonal moves cost
+    dia_child_cost = test_node.value + np.sqrt(2)      # diagonal moves cost
     dia_children_list = []
     for state_loc in dia_child_loc:
         if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:  # if the child cost is less from the current node
@@ -265,7 +231,6 @@ def find_children(curr_node):
     
 
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
-    #vishnuu
     global img, vidWriter
     img[curr_node.loc[0], curr_node.loc[1],0:3] = [0,255,np.min([50 + curr_node.value*4, 255]) ]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
@@ -281,6 +246,7 @@ def solver(curr_node):  # A function to be recursively called to find the djikst
     add_image_frame(curr_node)
     children_list = find_children(curr_node) # a function to find possible children and update cost
     l = l + children_list                  # adding possible children to the list
+    print(sys.getsizeof(l))
     heapq.heapify(l)                    # converting to a list
     solver(heapq.heappop(l)[2])            # recursive call to solver where we pass the element with the least cost 
     return 1        
@@ -295,26 +261,27 @@ if __name__=="__main__":
     global final_path
     node_cnt = 0
     final_path = []
-    #path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
-    #vidWriter = cv2.VideoWriter(path + "Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 24, (300,200))
     vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 48, (300,200))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
+    bot_r = int(input("Enter robot radius: "))
+    clear_r = int(input("Enter the clearance: "))
+    total_clear = bot_r+clear_r
     define_map_start = time.time()
-    define_map()
+    define_map(total_clear)
     print("Time to define map: " + str(time.time()-define_map_start))
     visualize_map()
 
+
     valid_points = False
     while  valid_points == False:
-        #start_pt = (input("Enter start point in form # #: "))
-        #start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
-        start_pt = [150,20]
+        start_pt = (input("Enter start point in form # #: "))
+        start_pt = [int(start_pt.split()[0]), int(start_pt.split()[1])]
         img[start_pt[0]][start_pt[1]][0:3] = [0,0,0]
 
-        #end_pt = (input("Enter end point in form # #: "))
-        #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
-        end_pt = [150,190]
+        end_pt = (input("Enter end point in form # #: "))
+        end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
+
         img[end_pt[0]][end_pt[1]][0:3] = [0,0,255]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
