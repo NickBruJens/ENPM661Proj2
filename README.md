@@ -24,5 +24,6 @@ The Project contains 2 files
 ```
 
 ### Notes
-Average Run time for Point robot: 
-Average Run time for Rigid robot: 
+Average Run time for Point robot 
+
+Average Run time for Rigid robot  
