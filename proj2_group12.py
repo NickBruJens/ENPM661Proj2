@@ -64,6 +64,19 @@ class MapMake:
                     img[int(i), int(j), 0:3] = [0, 0, 255]
 
     def clearance(self, clearance_distance):
+
+        self.map[self.width_x-clearance_distance:self.width_x,:,0] = 2
+        self.map[0:clearance_distance,:,0] = 2
+        self.map[:, 0:clearance_distance, 0] = 2
+        self.map[:, self.length_y-clearance_distance:self.length_y, 0] = 2
+
+
+        img[0:clearance_distance, :, 0:3] = [0, 0, 200]
+        img[self.width_x-clearance_distance:self.width_x, :, 0:3] = [0, 0, 200]
+        img[:, 0:clearance_distance, 0:3] = [0, 0, 200]
+        img[:, self.length_y-clearance_distance:self.length_y, 0:3] = [0, 0, 200]
+
+
         obstacles = np.where(self.map[:, :, 0] == 1)
         obstacles = np.array(obstacles)
         obstacles = obstacles.T
