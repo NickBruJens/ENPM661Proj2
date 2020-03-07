@@ -4,9 +4,9 @@ import numpy as np
 import heapq
 import time
 from itertools import count
-global l, final_path, img, vidWriter, node_cnt
+global l, final_path, img, vidWriter, node_cnt, Map
 sys.setrecursionlimit(10**6)
-sys.settrace(exception)
+# sys.settrace(exception)
 
 
 class node:
@@ -25,8 +25,11 @@ class MapMake:
     def __init__(self, width_x, length_y):
         self.width_x = width_x
         self.length_y = length_y
-        self.map = np.zeros([width_x, length_y, 2]) # declaration
-        self.map[:,:, 1] = np.inf                   # last element stores the cost to come
+        self.map = np.zeros([width_x, length_y, 5]) # declaration - 0 - obstacle or not | 1 - cost to come | 2- counter tie breaker | 3,4 - parent location
+        self.map[:,:, 1] = np.inf                   # 1 element stores the cost to come
+        self.map[:,:,2] = np.random.randint(0,100)
+        self.map[:,:,3] = None                      # 3 element stores the x loc of parent
+        self.map[:,:,4] = None                      # 4 element stores the y loc of parent
 
     def circle_obstacle(self, xpos, ypos, radius):  # makes a circle obstacle
         for i in np.arange(xpos-radius,xpos+radius,1):
@@ -142,6 +145,7 @@ def max_and_min(point_list):
 def define_map():
     global a
     a = MapMake(300, 200)
+    
     a.circle_obstacle(225, 150, 25)  # upper right circle
     a.oval_obstacle(150,100,40,20)  # center oval
 
@@ -164,7 +168,7 @@ def define_map():
 
     a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
     a.triangle_obstacle((point4,point3,point1))
-    a.clearance(2)
+    # a.clearance(2)
 
 
 
@@ -186,7 +190,7 @@ def point_in_obstacle(point):             # checks is a point is in an obstacle
 
 
 def allowable_moves(point):  # makes child states that are on the map and not on obstacles
-
+    global Map
     up,down,right,left = (point[0],point[1]+1),\
                          (point[0],point[1]-1),\
                          (point[0]+1,point[1]),\
@@ -200,33 +204,34 @@ def allowable_moves(point):  # makes child states that are on the map and not on
     test_square_moves = list((up,down,right,left))        # cardinal moves
     allowable_square_moves = []
     for move in test_square_moves:
-        if a.map[move[0],move[1],0] == 0 :                # if not in obstacle
-            if a.map.shape[0] > move[0] >= 0:             # if on map X
-                if a.map.shape[1] > move[1] >= 0:         # if on map y
+        if a.map.shape[0] > move[0] >= 0:             # if on map X
+            if a.map.shape[1] > move[1] >= 0:         # if on map y
+                if Map[move[0],move[1],0] == 0 :                # if not in obstacle
                     allowable_square_moves.append(move)
 
     test_dia_moves = list((nw,ne,sw,se))                  # diagonal moves
     allowable_dia_moves = []
     for move in test_dia_moves:
-        if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
-            if a.map.shape[0] > move[0] >= 0:             # if on the map x
+        if a.map.shape[0] > move[0] >= 0:             # if on the map x
                 if a.map.shape[1] > move[1] >= 0:         # if on the map y
-                    allowable_dia_moves.append(move)
+                    if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
+                        allowable_dia_moves.append(move)
 
     return allowable_square_moves, allowable_dia_moves
 
 
 def is_goal(curr_node):              # checks if the current node is also the goal
-    if curr_node.loc[0] == end_pt[0] and curr_node.loc[1] == end_pt[1]:
+    if curr_node[0] == end_pt[0] and curr_node[1] == end_pt[1]:
         return True
 
 
 def find_path(curr_node): # A function to find the path uptil the root by tracking each node's parent
     #vishnuu
-    global final_path
-    while(curr_node!=None):
-        final_path.insert(0, curr_node)
-        curr_node = curr_node.parent
+    global final_path, Map
+    while(Map[curr_node[0], curr_node[1], 3]!=None and Map[curr_node[0], curr_node[1], 4] !=None):
+        print(1)
+        final_path.insert(0, (Map[curr_node[0]][curr_node[1]][3], Map[curr_node[0]][curr_node[1]][4]))
+        curr_node = (Map[curr_node[0]][curr_node[1]][3], Map[curr_node[0]][curr_node[1]][4])
     for i in final_path:
         img[i.loc[0], i.loc[1], 0:3] = [255,0,0]
         cv2.waitKey(10)
@@ -238,23 +243,24 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
 
 def find_children(curr_node):
 
-    sqr_child_loc = allowable_moves(curr_node.loc)[0]  # gets allowable cardinal moves
-    sqr_child_cost = curr_node.value + 1               # square move cost
+    sqr_child_loc = allowable_moves(curr_node)[0]  # gets allowable cardinal moves
+    sqr_child_cost = Map[curr_node[0], curr_node[1], 1] + 10               # square move cost
     sqr_children_list = []
     for state_loc in sqr_child_loc:
-        if a.map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:  # if the child cost is less from the current node
-            a.map[state_loc[0]][state_loc[1]][1] = sqr_child_cost  # update map node to lesser cost
-            sqr_child_node = node(state_loc,curr_node)              # create new child node
-            sqr_children_list.append((sqr_child_node.value, sqr_child_node.counter, sqr_child_node))
+        if Map[state_loc[0]][state_loc[1]][1] > sqr_child_cost:  # if the child cost is less from the current node
+            Map[state_loc[0]][state_loc[1]][1] = sqr_child_cost  # update map node to lesser cost
+            # sqr_child_node = node(state_loc,curr_node)              # create new child node
+            sqr_children_list.append((sqr_child_cost, Map[state_loc[0]][state_loc[1]][2], state_loc))
 
-    dia_child_loc = allowable_moves(curr_node.loc)[1]  # gets allowable diagonal moves
-    dia_child_cost = curr_node.value + np.sqrt(2)      # diagonal moves cost
+    dia_child_loc = allowable_moves(curr_node)[1]  # gets allowable diagonal moves
+    print(curr_node)
+    dia_child_cost = Map[curr_node[0], curr_node[1], 1]  +  14    # diagonal moves cost
     dia_children_list = []
     for state_loc in dia_child_loc:
-        if a.map[state_loc[0]][state_loc[1]][1] > dia_child_cost:  # if the child cost is less from the current node
-            a.map[state_loc[0]][state_loc[1]][1] = dia_child_cost  # update map node to lesser cost
-            dia_child_node = node(state_loc, curr_node)            # create new child node
-            dia_children_list.append((dia_child_node.value, dia_child_node.counter, dia_child_node))
+        if Map[state_loc[0]][state_loc[1]][1] > dia_child_cost:  # if the child cost is less from the current node
+            Map[state_loc[0]][state_loc[1]][1] = dia_child_cost  # update map node to lesser cost
+            # dia_child_node = node(state_loc, curr_node)            # create new child node
+            dia_children_list.append((dia_child_cost, Map[state_loc[0]][state_loc[1]][2], state_loc))
 
     children_list = sqr_children_list + dia_children_list
     return children_list  # list of all children with a lesser cost for the current node
@@ -265,7 +271,7 @@ def find_children(curr_node):
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
     #vishnuu
     global img, vidWriter
-    img[curr_node.loc[0], curr_node.loc[1],0:3] = [0,255,np.min([50 + curr_node.value*4, 255]) ]
+    img[curr_node[0], curr_node[1],0:3] = [0,255,np.min([50 + Map[curr_node[0]][curr_node[1]][1]*4, 255]) ]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
     
@@ -291,6 +297,7 @@ if __name__=="__main__":
     global path
     global node_cnt
     global final_path
+    global Map
     node_cnt = 0
     final_path = []
     #path = "/home/vishnuu/UMD/ENPM661/Project2/ENPM661Proj2/"
@@ -302,6 +309,7 @@ if __name__=="__main__":
     define_map()
     print("Time to define map: " + str(time.time()-define_map_start))
     visualize_map()
+    Map = a.map
 
     valid_points = False
     while  valid_points == False:
@@ -320,13 +328,12 @@ if __name__=="__main__":
         else:
             valid_points = True
 
-    a.map[start_pt[0], start_pt[1], 1] = 0
+    Map[start_pt[0], start_pt[1], 1] = 0
 
     # create start node belonging to class node
-    start_node = node(start_pt,None)
-    start_node.value = 0
+    
     global l
-    l = [(start_node.value, start_node.counter, start_node)]
+    l = [(Map[start_pt[0], start_pt[1], 1], Map[start_pt[0], start_pt[1], 2], start_pt)]
 
     # define a priority queue and add first element
     heapq.heapify(l)
