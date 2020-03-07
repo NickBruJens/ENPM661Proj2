@@ -83,7 +83,6 @@ class MapMake:
         obstacle_edges = []
         obstacle_list = obstacles.tolist()
 
-
         for i in range(len(obstacles)):
             up = [obstacles[i][0], obstacles[i][1] + 1]
             down = [obstacles[i][0], obstacles[i][1] - 1]
