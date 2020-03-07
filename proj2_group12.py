@@ -3,7 +3,6 @@ import cv2
 import numpy as np
 import heapq
 import time
-from itertools import count
 global l, final_path, img, vidWriter, node_cnt
 sys.setrecursionlimit(10**9)
 #sys.settrace(exception)
@@ -25,7 +24,7 @@ class MapMake:
     def __init__(self, width_x, length_y):
         self.width_x = width_x
         self.length_y = length_y
-        self.map = np.zeros([width_x, length_y, 2]) # declaration
+        self.map = np.zeros([width_x, length_y, 2])
         self.map[:,:, 1] = np.inf                   # last element stores the cost to come
 
     def circle_obstacle(self, xpos, ypos, radius):  # makes a circle obstacle
@@ -44,8 +43,7 @@ class MapMake:
                     self.map[i, j, 0] = 1
                     img[i,j,0:3] = [0,0,255]
 
-
-    def triangle_obstacle(self,three_points):  # makes triangle obstacle
+    def triangle_obstacle(self,three_points): # makes triangle obstacle
         v1 = three_points[0]
         v2 = three_points[1]
         v3 = three_points[2]
@@ -65,47 +63,34 @@ class MapMake:
 
     def clearance(self, clearance_distance):
 
-        self.map[self.width_x-clearance_distance:self.width_x,:,0] = 2
+        self.map[self.width_x-clearance_distance:self.width_x,:,0] = 2  # makes edge clearance in map
         self.map[0:clearance_distance,:,0] = 2
         self.map[:, 0:clearance_distance, 0] = 2
         self.map[:, self.length_y-clearance_distance:self.length_y, 0] = 2
 
-
-        img[0:clearance_distance, :, 0:3] = [0, 0, 200]
+        img[0:clearance_distance, :, 0:3] = [0, 0, 200]                 # makes edge clearance in image
         img[self.width_x-clearance_distance:self.width_x, :, 0:3] = [0, 0, 200]
         img[:, 0:clearance_distance, 0:3] = [0, 0, 200]
         img[:, self.length_y-clearance_distance:self.length_y, 0:3] = [0, 0, 200]
 
-
         obstacles = np.where(self.map[:, :, 0] == 1)
         obstacles = np.array(obstacles)
-        obstacles = obstacles.T
-        obstacle_edges = []
-        obstacle_list = obstacles.tolist()
+        obstacles = obstacles.T  # get all points that are in obstacles
 
-        for i in range(len(obstacles)):
-            up = [obstacles[i][0], obstacles[i][1] + 1]
-            down = [obstacles[i][0], obstacles[i][1] - 1]
-            left = [obstacles[i][0] - 1, obstacles[i][1]]
-            right = [obstacles[i][0] + 1, obstacles[i][1]]
+        circle_list = []     # makes all the points that falls within a circle and uses it to find clearance
+        for i in np.arange(-clearance_distance,clearance_distance,1):
+            for j in np.arange(-clearance_distance,clearance_distance,1):
+                dist = np.sqrt(np.square(i) + np.square(j))
+                if  dist <= clearance_distance:
+                    circle_list.append([i,j])
 
-            surrounded = (up in obstacle_list) and \
-                         (down in obstacle_list) and \
-                         (left in obstacle_list) and \
-                         (right in obstacle_list)
+        for obstacle_point in obstacles:
+            bound_list = obstacle_point+circle_list
+            for bound in bound_list:
+                if a.map[bound[0], bound[1],0] == 0:
+                    a.map[bound[0], bound[1],0] = 2
+                    img[bound[0], bound[1], 0:3] = [0, 0, 200]
 
-            if not surrounded:
-                obstacle_edges.append(obstacles[i])  # only compares pixel indices to edge of obstacle
-
-        for i in range(len(obstacle_edges)):
-            xmin,xmax = obstacle_edges[i][0]-clearance_distance, obstacle_edges[i][0]+clearance_distance
-            ymin,ymax = obstacle_edges[i][1]-clearance_distance, obstacle_edges[i][1]+clearance_distance
-            for j in np.arange(xmin,xmax,1):
-                for k in np.arange(ymin,ymax,1):
-                    dist = np.sqrt(np.square(int(j)-obstacle_edges[i][0])+np.square(int(k)-obstacle_edges[i][1]))
-                    if dist <= clearance_distance and self.map[int(j),int(k),0] != 1:
-                        self.map[int(j),int(k),0] = 2
-                        img[int(j),int(k),0:3] = [0,0,200]
 
 def sign(point1,point2,point3):
     return (point1[0]-point3[0])*(point2[1]-point3[1])-(point2[0]-point3[0])*(point1[1]-point3[1])
@@ -120,11 +105,11 @@ def max_and_min(point_list):
     return (min_x,min_y),(max_x,max_y)
 
 
-def define_map(clear_r):
+def define_map(clear_r):  # makes the map according to the assignment
     global a
     a = MapMake(300, 200)
-    a.circle_obstacle(225, 150, 25)  # upper right circle
-    a.oval_obstacle(150,100,40,20)  # center oval
+    a.circle_obstacle(225, 150, 25)
+    a.oval_obstacle(150,100,40,20)
 
     a.triangle_obstacle(([20,120],[25,185],[50,150]))
     a.triangle_obstacle(([50,150],[25,185],[75,185]))
@@ -135,17 +120,17 @@ def define_map(clear_r):
     a.triangle_obstacle(([75,185],[100,150],[50,150]))
     a.triangle_obstacle(([50,150],[100,150],[75,120]))
 
-    a.triangle_obstacle(([225,10],[225,40],[250,25]))  # lower right diamond
+    a.triangle_obstacle(([225,10],[225,40],[250,25]))
     a.triangle_obstacle(([225,10],[225,40],[200,25]))
 
     point1 = [95,30]
     point2 = [95+10*np.sin(np.deg2rad(30)),30+10*np.cos(np.deg2rad(30))]
     point3 = [point2[0]-75*np.cos(np.deg2rad(30)),point2[1]+75*np.sin(np.deg2rad(30))]
     point4 = [95-75*np.cos(np.deg2rad(30)),30+75*np.sin(np.deg2rad(30))]
-
-    a.triangle_obstacle((point3,point1,point2))  # lower left rectangle
+    a.triangle_obstacle((point3,point1,point2))
     a.triangle_obstacle((point4,point3,point1))
-    if clear_r != 0:
+
+    if clear_r != 0: # puts in clearance and radius if present
         a.clearance(clear_r)
     return    
 
@@ -157,7 +142,7 @@ def visualize_map():   # a function to visualize the initial map generated with 
     cv2.waitKey()
 
 
-def point_in_obstacle(point):             # checks is a point is in an obstacle
+def point_in_obstacle(point):  # checks is a point is in an obstacle
     if a.map[point[0]][point[1]][0] != 0:
         return True
     else:
@@ -180,9 +165,9 @@ def allowable_moves(point):  # makes child states that are on the map and not on
     allowable_square_moves = []
     for move in test_square_moves:
         if not move in visitedNode:
-            if a.map.shape[0] > move[0] >= 0:  # if on map X
-                if a.map.shape[1] > move[1] >= 0:  # if on map y
-                    if a.map[move[0],move[1],0] == 0 :                # if not in obstacle
+            if a.map.shape[0] > move[0] >= 0:            # if on map X
+                if a.map.shape[1] > move[1] >= 0:        # if on map y
+                    if a.map[move[0],move[1],0] == 0:    # if not in obstacle
 
                         allowable_square_moves.append(move)
 
@@ -190,9 +175,9 @@ def allowable_moves(point):  # makes child states that are on the map and not on
     allowable_dia_moves = []
     for move in test_dia_moves:
         if not move in visitedNode:
-            if a.map.shape[0] > move[0] >= 0:  # if on the map x
-                if a.map.shape[1] > move[1] >= 0:  # if on the map y
-                    if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
+            if a.map.shape[0] > move[0] >= 0:            # if on the map x
+                if a.map.shape[1] > move[1] >= 0:        # if on the map y
+                    if a.map[move[0],move[1],0] == 0:    # if not in obstacle
 
                         allowable_dia_moves.append(move)
 
@@ -204,7 +189,7 @@ def is_goal(curr_node):              # checks if the current node is also the go
         return True
 
 
-def find_path(curr_node): # A function to find the path uptil the root by tracking each node's parent
+def find_path(curr_node): # A function to find the path until the root by tracking each node's parent
 
     global final_path
     while(curr_node!=None):
@@ -214,7 +199,6 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
         img[i.loc[0], i.loc[1], 0:3] = [255,0,0]
         for j in range(3):
             vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
-    # cv2.waitKey(5000)    
     vidWriter.release()         
     return
 
@@ -258,13 +242,12 @@ def solver(curr_node):  # A function to be recursively called to find the djikst
         visitedNode.update({curr_node: "s"})
         global l
         if (is_goal(curr_node)):
-            find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
+            find_path(curr_node) # find the path to the start node by tracking the node's parent
             # print("here")
             break
         add_image_frame(curr_node)
         children_list = find_children(curr_node) # a function to find possible children and update cost
         l = l + children_list                  # adding possible children to the list
-        # print(sys.getsizeof(l))
         heapq.heapify(l)                    # converting to a list
         curr_node = heapq.heappop(l)[2]            # recursive call to solver where we pass the element with the least cost 
     return 1        
@@ -289,8 +272,10 @@ if __name__=="__main__":
     total_clear = bot_r+clear_r
     define_map_start = time.time()
     define_map(total_clear)
-    print("Time to define map: " + str(time.time()-define_map_start))
-    # visualize_map()
+    t1 = time.time()-define_map_start
+    print("Time to define map: " + str(t1))
+    solve_problem_start = time.time()
+    visualize_map()
 
 
     valid_points = False
@@ -327,6 +312,7 @@ if __name__=="__main__":
     # if found, visualise the path 
     if flag == 1:
         print("Path found. Please watch the video generated.")
+        print("Time to define map and solve problem: " + str(time.time() - solve_problem_start + t1))
     # else print path not found    
     else:
         print("Solution not found... ")
