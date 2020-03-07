@@ -6,7 +6,7 @@ import time
 from itertools import count
 global l, final_path, img, vidWriter, node_cnt
 sys.setrecursionlimit(10**6)
-sys.settrace(exception)
+#sys.settrace(exception)
 
 
 class node:
@@ -200,17 +200,19 @@ def allowable_moves(point):  # makes child states that are on the map and not on
     test_square_moves = list((up,down,right,left))        # cardinal moves
     allowable_square_moves = []
     for move in test_square_moves:
-        if a.map[move[0],move[1],0] == 0 :                # if not in obstacle
-            if a.map.shape[0] > move[0] >= 0:             # if on map X
-                if a.map.shape[1] > move[1] >= 0:         # if on map y
+        if a.map.shape[0] > move[0] >= 0:  # if on map X
+            if a.map.shape[1] > move[1] >= 0:  # if on map y
+                if a.map[move[0],move[1],0] == 0 :                # if not in obstacle
+
                     allowable_square_moves.append(move)
 
     test_dia_moves = list((nw,ne,sw,se))                  # diagonal moves
     allowable_dia_moves = []
     for move in test_dia_moves:
-        if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
-            if a.map.shape[0] > move[0] >= 0:             # if on the map x
-                if a.map.shape[1] > move[1] >= 0:         # if on the map y
+        if a.map.shape[0] > move[0] >= 0:  # if on the map x
+            if a.map.shape[1] > move[1] >= 0:  # if on the map y
+                if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
+
                     allowable_dia_moves.append(move)
 
     return allowable_square_moves, allowable_dia_moves
@@ -312,7 +314,7 @@ if __name__=="__main__":
 
         #end_pt = (input("Enter end point in form # #: "))
         #end_pt = [int(end_pt.split()[0]), int(end_pt.split()[1])]
-        end_pt = [150,180]
+        end_pt = [150,190]
         img[end_pt[0]][end_pt[1]][0:3] = [0,0,255]
         if(point_in_obstacle(start_pt) or point_in_obstacle(end_pt)): # check if either the start or end node an obstacle
             print("Enter valid points... ")
