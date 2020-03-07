@@ -19,11 +19,22 @@ The Project contains 2 files
 
 ```
 * Clone the repository
+```
+For point robot, run
+```
 * python3 Dijkstra_point.py # for point robot
+```
+A user input of x and y is expected for input and goal point in Cartesian coordinates. 
+
+
+For rigid robot, run
+```
 * python3 Dijkstra_rigid.py # for rigid robot
 ```
+In addition to the start point and goal point, user is expected to input robot radius and clearance. 
+
 
 ### Notes
-Average Run time for Point robot 
+Average Run time for Point robot - 47.14 sec
 
-Average Run time for Rigid robot  
+Average Run time for Rigid robot - 55.5 sec
