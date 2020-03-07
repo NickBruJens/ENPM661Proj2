@@ -134,6 +134,7 @@ def define_map(clear_r):
     a.triangle_obstacle((point4,point3,point1))
     if clear_r != 0:
         a.clearance(clear_r)
+    return    
 
 
 
@@ -165,20 +166,22 @@ def allowable_moves(point):  # makes child states that are on the map and not on
     test_square_moves = list((up,down,right,left))        # cardinal moves
     allowable_square_moves = []
     for move in test_square_moves:
-        if a.map.shape[0] > move[0] >= 0:  # if on map X
-            if a.map.shape[1] > move[1] >= 0:  # if on map y
-                if a.map[move[0],move[1],0] == 0 :                # if not in obstacle
+        if not move in visitedNode:
+            if a.map.shape[0] > move[0] >= 0:  # if on map X
+                if a.map.shape[1] > move[1] >= 0:  # if on map y
+                    if a.map[move[0],move[1],0] == 0 :                # if not in obstacle
 
-                    allowable_square_moves.append(move)
+                        allowable_square_moves.append(move)
 
     test_dia_moves = list((nw,ne,sw,se))                  # diagonal moves
     allowable_dia_moves = []
     for move in test_dia_moves:
-        if a.map.shape[0] > move[0] >= 0:  # if on the map x
-            if a.map.shape[1] > move[1] >= 0:  # if on the map y
-                if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
+        if not move in visitedNode:
+            if a.map.shape[0] > move[0] >= 0:  # if on the map x
+                if a.map.shape[1] > move[1] >= 0:  # if on the map y
+                    if a.map[move[0],move[1],0] == 0:                 # if not in obstacle
 
-                    allowable_dia_moves.append(move)
+                        allowable_dia_moves.append(move)
 
     return allowable_square_moves, allowable_dia_moves
 
@@ -196,9 +199,9 @@ def find_path(curr_node): # A function to find the path uptil the root by tracki
         curr_node = curr_node.parent
     for i in final_path:
         img[i.loc[0], i.loc[1], 0:3] = [255,0,0]
-        cv2.waitKey(10)
-        vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
-        
+        for j in range(3):
+            vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
+    # cv2.waitKey(5000)    
     vidWriter.release()         
     return
 
@@ -232,23 +235,25 @@ def find_children(curr_node):
 
 def add_image_frame(curr_node): # A function to add the newly explored state to a frame. This would also update the color based on the cost to come
     global img, vidWriter
-    img[curr_node.loc[0], curr_node.loc[1],0:3] = [0,255,np.min([50 + curr_node.value*4, 255]) ]
+    img[curr_node.loc[0], curr_node.loc[1],0:3] = [0,255,np.min([50 + curr_node.value*2, 255]) ]
     vidWriter.write(cv2.rotate(img,cv2.ROTATE_90_COUNTERCLOCKWISE))
     return
     
 
 def solver(curr_node):  # A function to be recursively called to find the djikstra solution
-    global l
-    if (is_goal(curr_node)):
-        find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
-        print("here")
-        return 
-    add_image_frame(curr_node)
-    children_list = find_children(curr_node) # a function to find possible children and update cost
-    l = l + children_list                  # adding possible children to the list
-    print(sys.getsizeof(l))
-    heapq.heapify(l)                    # converting to a list
-    solver(heapq.heappop(l)[2])            # recursive call to solver where we pass the element with the least cost 
+    while(1):
+        visitedNode.update({curr_node: "s"})
+        global l
+        if (is_goal(curr_node)):
+            find_path(curr_node) # find the path right uptil the start node by tracking the node's parent
+            # print("here")
+            break
+        add_image_frame(curr_node)
+        children_list = find_children(curr_node) # a function to find possible children and update cost
+        l = l + children_list                  # adding possible children to the list
+        # print(sys.getsizeof(l))
+        heapq.heapify(l)                    # converting to a list
+        curr_node = heapq.heappop(l)[2]            # recursive call to solver where we pass the element with the least cost 
     return 1        
 
 
@@ -259,9 +264,11 @@ if __name__=="__main__":
     global path
     global node_cnt
     global final_path
+    global visitedNode
     node_cnt = 0
     final_path = []
-    vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 48, (300,200))
+    visitedNode = {}
+    vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 288, (300,200))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
     bot_r = int(input("Enter robot radius: "))
@@ -270,7 +277,7 @@ if __name__=="__main__":
     define_map_start = time.time()
     define_map(total_clear)
     print("Time to define map: " + str(time.time()-define_map_start))
-    visualize_map()
+    # visualize_map()
 
 
     valid_points = False
@@ -300,6 +307,7 @@ if __name__=="__main__":
     # define a priority queue and add first element
     heapq.heapify(l)
 
+    print("Running..")
     # solve using djikstra
     flag = solver(heapq.heappop(l)[2])
     # print(flag)
