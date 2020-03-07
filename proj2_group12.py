@@ -311,14 +311,3 @@ if __name__=="__main__":
         print("Solution not found... ")
 
 
-
-################# List of functions/class/methods to be implemented #######################
-# Class node
-# Function solver
-# Function visualise_path()
-# is_goal
-# find_path
-# find_children
-# add_image_frame
-    
-
