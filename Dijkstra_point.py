@@ -267,15 +267,15 @@ if __name__=="__main__":
     vidWriter = cv2.VideoWriter("Djikstra.mp4", cv2.VideoWriter_fourcc(*'mp4v'), 288, (300,200))
     img = np.zeros([300,200,3], dtype=np.uint8)
     img[:,:,0:3] = [0,255,0]
-    bot_r = int(input("Enter robot radius: "))
-    clear_r = int(input("Enter the clearance: "))
-    total_clear = bot_r+clear_r
+    #bot_r = int(input("Enter robot radius: "))
+    #clear_r = int(input("Enter the clearance: "))
+    total_clear = 0
     define_map_start = time.time()
     define_map(total_clear)
     t1 = time.time()-define_map_start
     print("Time to define map: " + str(t1))
     solve_problem_start = time.time()
-    visualize_map()
+    #visualize_map()
 
 
     valid_points = False
